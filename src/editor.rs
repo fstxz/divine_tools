@@ -252,6 +252,16 @@ pub fn property<T: Inspector>(name: &str, property: &mut T, ui: &mut egui::Ui) {
     ui.end_row();
 }
 
+pub fn property_read_only<T: Inspector>(name: &str, property: &mut T, ui: &mut egui::Ui) {
+    ui.label(name);
+    ui.add_enabled_ui(false, |ui| {
+        ui.push_id(name, |ui| {
+            property.show(ui);
+        });
+    });
+    ui.end_row();
+}
+
 pub fn property_tooltip<T: Inspector>(
     name: &str,
     tooltip_text: &str,
@@ -376,6 +386,12 @@ impl Inspector for char {
 }
 
 impl Inspector for i16 {
+    fn show(&mut self, ui: &mut egui::Ui) {
+        ui.add(DragValue::new(self));
+    }
+}
+
+impl Inspector for u16 {
     fn show(&mut self, ui: &mut egui::Ui) {
         ui.add(DragValue::new(self));
     }

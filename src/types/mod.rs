@@ -12,8 +12,8 @@ use crate::{
     types::{
         eggs::Eggs, font::Font, magic::Magic, music::Music, objects_000::Objects000,
         osiris_names::OsirisNames, osiris_objects::OsirisObjects, persist::Persist, props::Props,
-        quest_log::QuestLog, reverbs::Reverbs, sound::SoundConfig, status_plate::StatusPlate,
-        telpstates::TelpStates, usernotes::Notes,
+        quest_log::QuestLog, quickinfo::QuickInfo, reverbs::Reverbs, sound::SoundConfig,
+        status_plate::StatusPlate, telpstates::TelpStates, usernotes::Notes,
     },
 };
 
@@ -29,6 +29,7 @@ pub mod packed;
 pub mod persist;
 pub mod props;
 pub mod quest_log;
+pub mod quickinfo;
 pub mod reverbs;
 pub mod sound;
 pub mod status_plate;
@@ -103,6 +104,7 @@ impl<'de> serde::Deserialize<'de> for Format {
                     FormatType::Persist => Box::new(map.next_value::<Persist>()?),
                     FormatType::Objects000 => Box::new(map.next_value::<Objects000>()?),
                     FormatType::QuestLog => Box::new(map.next_value::<QuestLog>()?),
+                    FormatType::QuickInfo => Box::new(map.next_value::<QuickInfo>()?),
                 };
 
                 Ok(Format {
@@ -144,6 +146,7 @@ impl Format {
             "objects.000" => (FormatType::Objects000, from_bytes_dyn::<Objects000>),
             "telpstates.000" => (FormatType::TelpStates, from_bytes_dyn::<TelpStates>),
             "quest_log.000" => (FormatType::QuestLog, from_bytes_dyn::<QuestLog>),
+            "quickinfo.000" => (FormatType::QuickInfo, from_bytes_dyn::<QuickInfo>),
             _ => {
                 let Some(extension) = path.extension() else {
                     return Err("Unknown file format".into());
@@ -191,6 +194,7 @@ enum FormatType {
     TelpStates,
     Font,
     QuestLog,
+    QuickInfo,
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
@@ -370,6 +374,19 @@ impl Binary for i16 {
 
     fn to_bytes(&self, writer: &mut BufferWriter) {
         writer.write_i16(*self);
+    }
+}
+
+impl Binary for u16 {
+    fn from_bytes(reader: &mut BufferReader) -> crate::Result<Self>
+    where
+        Self: Sized,
+    {
+        reader.read_u16()
+    }
+
+    fn to_bytes(&self, writer: &mut BufferWriter) {
+        writer.write_u16(*self);
     }
 }
 

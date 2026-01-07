@@ -38,6 +38,11 @@ impl<'a> BufferReader<'a> {
         Ok(i16::from_le_bytes(bytes.try_into()?))
     }
 
+    pub fn read_u16(&mut self) -> crate::Result<u16> {
+        let bytes = self.read_bytes(2)?;
+        Ok(u16::from_le_bytes(bytes.try_into()?))
+    }
+
     pub fn read_u32(&mut self) -> crate::Result<u32> {
         let bytes = self.read_bytes(4)?;
         Ok(u32::from_le_bytes(bytes.try_into()?))
@@ -94,6 +99,11 @@ impl BufferWriter {
     }
 
     pub fn write_i16(&mut self, value: i16) -> &mut Self {
+        self.buffer.extend_from_slice(&value.to_le_bytes());
+        self
+    }
+
+    pub fn write_u16(&mut self, value: u16) -> &mut Self {
         self.buffer.extend_from_slice(&value.to_le_bytes());
         self
     }
