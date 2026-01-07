@@ -31,6 +31,9 @@ struct UnpackCommand {
     /// path to the .cmp file
     #[argh(positional)]
     path: PathBuf,
+    /// automatically confirm unpacking
+    #[argh(switch, short = 'y')]
+    assume_yes: bool,
 }
 
 /// packs files into a .cmp file
@@ -54,6 +57,8 @@ fn main() -> Result<()> {
         SubCommand::Pack(pack) => {
             crate::types::packed::pack(&current_dir, pack.output.unwrap_or("packed.cmp".into()))
         }
-        SubCommand::Unpack(unpack) => crate::types::packed::unpack(&unpack.path, &current_dir),
+        SubCommand::Unpack(unpack) => {
+            crate::types::packed::unpack(&unpack.path, &current_dir, unpack.assume_yes)
+        }
     }
 }

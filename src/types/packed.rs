@@ -7,27 +7,29 @@ use crate::buffer::{BufferReader, BufferWriter};
 
 const KEY: &[u8; 32] = b"\x0C\x40\x55\x0C\x2D\x41\x62\x2D\x03\x06\x48\x1E\x05\x48\x14\x05\x30\x32\x33\x34\x63\x63\x46\x33\x18\x09\x28\x0F\x06\x22\x39\x17";
 
-pub fn unpack(file_path: &PathBuf, to_directory: &PathBuf) -> crate::Result<()> {
+pub fn unpack(file_path: &PathBuf, to_directory: &PathBuf, assume_yes: bool) -> crate::Result<()> {
     let file = std::fs::read(file_path).map_err(|e| format!("Failed to open .cmp file: {e}"))?;
 
     let mut reader = BufferReader::new(&file);
     let file_count = reader.read_u32()?;
 
-    print!(
-        "{file_count} files will be extracted to {}. Continue? (Y/n): ",
-        to_directory.display()
-    );
-    std::io::stdout().flush()?;
+    if !assume_yes {
+        print!(
+            "{file_count} files will be extracted to {}. Continue? (Y/n): ",
+            to_directory.display()
+        );
+        std::io::stdout().flush()?;
 
-    let response = {
-        let mut buf = String::new();
-        std::io::stdin().read_line(&mut buf)?;
-        buf.trim_ascii().to_lowercase()
-    };
+        let response = {
+            let mut buf = String::new();
+            std::io::stdin().read_line(&mut buf)?;
+            buf.trim_ascii().to_lowercase()
+        };
 
-    if !response.is_empty() && response.to_lowercase() != "y" {
-        println!("Aborted");
-        return Ok(());
+        if !response.is_empty() && response.to_lowercase() != "y" {
+            println!("Aborted");
+            return Ok(());
+        }
     }
 
     for _ in 0..file_count {
