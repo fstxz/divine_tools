@@ -10,7 +10,7 @@ use crate::{
     buffer::{BufferReader, BufferWriter},
     editor::Inspector,
     types::{
-        eggs::Eggs, font::Font, magic::Magic, music::Music, objects_000::Objects000,
+        eggs::Eggs, font::Font, info::Info, magic::Magic, music::Music, objects_000::Objects000,
         osiris_names::OsirisNames, osiris_objects::OsirisObjects, persist::Persist, props::Props,
         quest_log::QuestLog, quickinfo::QuickInfo, reverbs::Reverbs, sound::SoundConfig,
         status_plate::StatusPlate, telpstates::TelpStates, text::Text, usernotes::Notes,
@@ -20,6 +20,7 @@ use crate::{
 pub mod data;
 pub mod eggs;
 pub mod font;
+pub mod info;
 pub mod magic;
 pub mod music;
 pub mod objects_000;
@@ -107,6 +108,7 @@ impl<'de> serde::Deserialize<'de> for Format {
                     FormatType::QuestLog => Box::new(map.next_value::<QuestLog>()?),
                     FormatType::QuickInfo => Box::new(map.next_value::<QuickInfo>()?),
                     FormatType::Text => Box::new(map.next_value::<Text>()?),
+                    FormatType::Info => Box::new(map.next_value::<Info>()?),
                 };
 
                 Ok(Format {
@@ -150,6 +152,7 @@ impl Format {
             "quest_log.000" => (FormatType::QuestLog, from_bytes_dyn::<QuestLog>),
             "quickinfo.000" => (FormatType::QuickInfo, from_bytes_dyn::<QuickInfo>),
             "text.cmp" => (FormatType::Text, from_bytes_dyn::<Text>),
+            "info.000" => (FormatType::Info, from_bytes_dyn::<Info>),
             _ => {
                 let Some(extension) = path.extension() else {
                     return Err("Unknown file format".into());
@@ -199,6 +202,7 @@ enum FormatType {
     QuestLog,
     QuickInfo,
     Text,
+    Info,
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
