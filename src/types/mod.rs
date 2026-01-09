@@ -12,8 +12,9 @@ use crate::{
     types::{
         eggs::Eggs, font::Font, info::Info, magic::Magic, music::Music, objects_000::Objects000,
         osiris_names::OsirisNames, osiris_objects::OsirisObjects, persist::Persist, props::Props,
-        quest_log::QuestLog, quickinfo::QuickInfo, reverbs::Reverbs, sound::SoundConfig,
-        status_plate::StatusPlate, telpstates::TelpStates, text::Text, usernotes::Notes,
+        quest_log::QuestLog, quickinfo::QuickInfo, reverbs::Reverbs, shroud::Shroud,
+        sound::SoundConfig, status_plate::StatusPlate, telpstates::TelpStates, text::Text,
+        usernotes::Notes,
     },
 };
 
@@ -32,6 +33,7 @@ pub mod props;
 pub mod quest_log;
 pub mod quickinfo;
 pub mod reverbs;
+pub mod shroud;
 pub mod sound;
 pub mod status_plate;
 pub mod telpstates;
@@ -109,6 +111,7 @@ impl<'de> serde::Deserialize<'de> for Format {
                     FormatType::QuickInfo => Box::new(map.next_value::<QuickInfo>()?),
                     FormatType::Text => Box::new(map.next_value::<Text>()?),
                     FormatType::Info => Box::new(map.next_value::<Info>()?),
+                    FormatType::Shroud => Box::new(map.next_value::<Shroud>()?),
                 };
 
                 Ok(Format {
@@ -160,6 +163,12 @@ impl Format {
 
                 if extension == "fnt" {
                     (FormatType::Font, from_bytes_dyn::<Font>)
+                } else if let Some(stem) = path.file_stem() {
+                    if stem == "shroud" {
+                        (FormatType::Shroud, from_bytes_dyn::<Shroud>)
+                    } else {
+                        return Err("Unknown file format".into());
+                    }
                 } else {
                     return Err("Unknown file format".into());
                 }
@@ -203,6 +212,7 @@ enum FormatType {
     QuickInfo,
     Text,
     Info,
+    Shroud,
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
