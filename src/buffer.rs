@@ -16,6 +16,10 @@ impl<'a> BufferReader<'a> {
         self.buffer.len()
     }
 
+    pub fn position(&self) -> usize {
+        self.position
+    }
+
     pub fn is_empty(&self) -> bool {
         self.position == self.buffer.len()
     }
@@ -86,6 +90,10 @@ pub struct BufferWriter {
 impl BufferWriter {
     pub fn new() -> Self {
         Self { buffer: Vec::new() }
+    }
+
+    pub fn len(&self) -> usize {
+        self.buffer.len()
     }
 
     pub fn write_u8(&mut self, value: u8) -> &mut Self {

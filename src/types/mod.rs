@@ -14,7 +14,7 @@ use crate::{
         osiris_names::OsirisNames, osiris_objects::OsirisObjects, persist::Persist, props::Props,
         quest_log::QuestLog, quickinfo::QuickInfo, reverbs::Reverbs, shroud::Shroud,
         sound::SoundConfig, status_plate::StatusPlate, telpstates::TelpStates, text::Text,
-        usernotes::Notes,
+        usernotes::Notes, world::World,
     },
 };
 
@@ -39,6 +39,7 @@ pub mod status_plate;
 pub mod telpstates;
 pub mod text;
 pub mod usernotes;
+pub mod world;
 
 pub trait Binary: erased_serde::Serialize + Inspector + Any {
     fn from_bytes(reader: &mut BufferReader) -> crate::Result<Self>
@@ -112,6 +113,7 @@ impl<'de> serde::Deserialize<'de> for Format {
                     FormatType::Text => Box::new(map.next_value::<Text>()?),
                     FormatType::Info => Box::new(map.next_value::<Info>()?),
                     FormatType::Shroud => Box::new(map.next_value::<Shroud>()?),
+                    FormatType::World => Box::new(map.next_value::<World>()?),
                 };
 
                 Ok(Format {
@@ -166,6 +168,8 @@ impl Format {
                 } else if let Some(stem) = path.file_stem() {
                     if stem == "shroud" {
                         (FormatType::Shroud, from_bytes_dyn::<Shroud>)
+                    } else if stem == "world" {
+                        (FormatType::World, from_bytes_dyn::<World>)
                     } else {
                         return Err("Unknown file format".into());
                     }
@@ -180,7 +184,7 @@ impl Format {
         let binary = load(&mut reader)?;
 
         if !reader.is_empty() {
-            return Err("buffer is not empty".into());
+            return Err(format!("buffer is not empty: {}", reader.position()).into());
         }
 
         Ok(Self {
@@ -213,6 +217,7 @@ enum FormatType {
     Text,
     Info,
     Shroud,
+    World,
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
@@ -284,7 +289,7 @@ impl<T: Binary + serde::Serialize + Default, const N: usize> Binary for FixedArr
     where
         Self: Sized,
     {
-        let mut elements = Vec::new();
+        let mut elements = Vec::with_capacity(N);
 
         for _ in 0..N {
             elements.push(T::from_bytes(reader)?);
