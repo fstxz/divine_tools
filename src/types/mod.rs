@@ -471,3 +471,85 @@ impl Binary for i32 {
         writer.write_i32(*self);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::{Path, PathBuf};
+
+    use crate::{
+        buffer::{BufferReader, BufferWriter},
+        types::{
+            Binary, eggs::Eggs, info::Info, magic::Magic, music::Music,
+            osiris_objects::OsirisObjects, persist::Persist, props::Props, quest_log::QuestLog,
+            quickinfo::QuickInfo, reverbs::Reverbs, shroud::Shroud, sound::SoundConfig,
+            status_plate::StatusPlate, telpstates::TelpStates, text::Text, usernotes::Notes,
+            world::World,
+        },
+    };
+
+    /// Tests loading and saving binary files. When saving a file without making any changes,
+    /// it should produce the exact same binary as the input file.
+    ///
+    /// Assumes that the game directory is located at "tmp/divine_diviniy/"
+    /// relative to the project root directory (can be a symlink).
+    ///
+    /// Note: Objects000 and OsirisNames are not tested because original files contain
+    /// garbage in fixed strings (after the null terminator) that gets cleaned after saving.
+    #[test]
+    fn load_save() {
+        let path = PathBuf::from_iter([env!("CARGO_MANIFEST_DIR"), "tmp", "divine_divinity"]);
+
+        fn test_file<T: Binary>(path: &Path) {
+            let input_file = std::fs::read(path).expect("must be able to read the file");
+
+            let mut reader = BufferReader::new(&input_file);
+            let binary = T::from_bytes(&mut reader).expect("must be able to read binary file");
+
+            let mut writer = BufferWriter::new();
+            binary.to_bytes(&mut writer);
+
+            let output_file = writer.finish();
+
+            if input_file != output_file {
+                panic!(
+                    "input file at path \"{}\" differs from the output file",
+                    path.display()
+                );
+            }
+        }
+
+        macro_rules! test {
+            ($ty:ty, $path:expr) => {
+                test_file::<$ty>(&path.join(PathBuf::from_iter($path.split("/"))));
+            };
+        }
+
+        test!(World, "dynamic/world.x0");
+        test!(World, "dynamic/world.x1");
+        test!(World, "dynamic/world.x2");
+        test!(World, "dynamic/world.x3");
+        test!(World, "dynamic/world.x4");
+        test!(Shroud, "main/startup/shroud.x0");
+        test!(Shroud, "main/startup/shroud.x1");
+        test!(Shroud, "main/startup/shroud.x2");
+        test!(Shroud, "main/startup/shroud.x3");
+        test!(Shroud, "main/startup/shroud.x4");
+        test!(TelpStates, "main/startup/telpstates.000");
+        test!(Info, "main/startup/info.000");
+        test!(QuickInfo, "main/startup/quickinfo.000");
+        test!(QuestLog, "main/startup/quest_log.000");
+        test!(OsirisObjects, "main/startup/static/osiobjects.000");
+        test!(Magic, "dat/magic.cmp");
+        test!(Notes, "dat/usernotes.bin");
+        test!(Props, "dat/props.000");
+        test!(Persist, "persist.dat");
+        test!(Music, "sound/music.dat");
+        test!(Reverbs, "sound/reverbs.dat");
+        test!(SoundConfig, "sound.cfg");
+        test!(Text, "localizations/english/text.cmp");
+        test!(StatusPlate, "dat/statuspl.cmp");
+        test!(Eggs, "global/eggs.000");
+        // TODO: implement
+        // test!(Font, "fonts/dialog_white.fnt");
+    }
+}
