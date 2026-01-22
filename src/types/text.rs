@@ -65,14 +65,14 @@ impl Binary for TextEntry2 {
         // Strings are null-terminated, but the null byte is not included in the length.
         let text1 = String::from_bytes(reader)?;
 
-        if text1.len() > 0 {
+        if !text1.is_empty() {
             // There is no null byte if the string is empty.
             reader.skip(1);
         }
 
         let text2 = String::from_bytes(reader)?;
 
-        if text2.len() > 0 {
+        if !text2.is_empty() {
             reader.skip(1);
         }
 
@@ -84,13 +84,13 @@ impl Binary for TextEntry2 {
 
         self.text1.to_bytes(writer);
 
-        if self.text1.len() > 0 {
+        if !self.text1.is_empty() {
             writer.pad(1);
         }
 
         self.text2.to_bytes(writer);
 
-        if self.text2.len() > 0 {
+        if !self.text2.is_empty() {
             writer.pad(1);
         }
     }

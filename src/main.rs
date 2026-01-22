@@ -55,7 +55,7 @@ fn main() -> Result<()> {
     let current_dir = std::env::current_dir()?;
     match command {
         SubCommand::Pack(pack) => {
-            crate::types::packed::pack(&current_dir, pack.output.unwrap_or("packed.cmp".into()))
+            crate::types::packed::pack(&current_dir, &pack.output.unwrap_or("packed.cmp".into()))
         }
         SubCommand::Unpack(unpack) => {
             crate::types::packed::unpack(&unpack.path, &current_dir, unpack.assume_yes)

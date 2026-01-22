@@ -27,7 +27,7 @@ impl Binary for Objects000 {
 
         // Length is not encoded anywhere, but the size of each
         // object is 148 bytes, so we can use that.
-        if reader.len() % 148 != 0 {
+        if !reader.len().is_multiple_of(148) {
             return Err("this file does not appear to be valid".into());
         }
 

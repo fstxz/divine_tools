@@ -41,6 +41,8 @@ pub mod text;
 pub mod usernotes;
 pub mod world;
 
+type FromBytesFn = fn(&mut BufferReader) -> crate::Result<Box<dyn Binary>>;
+
 pub trait Binary: erased_serde::Serialize + Inspector + Any {
     fn from_bytes(reader: &mut BufferReader) -> crate::Result<Self>
     where
@@ -137,10 +139,7 @@ impl Format {
             .to_string_lossy()
             .to_string();
 
-        let (format_type, load): (
-            FormatType,
-            fn(&mut BufferReader) -> crate::Result<Box<dyn Binary>>,
-        ) = match file_name.as_str() {
+        let (format_type, load): (FormatType, FromBytesFn) = match file_name.as_str() {
             "music.dat" => (FormatType::Music, from_bytes_dyn::<Music>),
             "sound.cfg" => (FormatType::SoundConfig, from_bytes_dyn::<SoundConfig>),
             "props.000" => (FormatType::Props, from_bytes_dyn::<Props>),
@@ -179,7 +178,7 @@ impl Format {
             }
         };
 
-        let file = std::fs::read(&path)?;
+        let file = std::fs::read(path)?;
         let mut reader = BufferReader::new(&file);
         let binary = load(&mut reader)?;
 

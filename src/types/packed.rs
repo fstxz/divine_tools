@@ -1,13 +1,16 @@
 //! Module that deals with packed cmp files, i.e. files that have
 //! other files embedded inside them.
 
-use std::{io::Write, path::PathBuf};
+use std::{
+    io::Write,
+    path::{Path, PathBuf},
+};
 
 use crate::buffer::{BufferReader, BufferWriter};
 
 const KEY: &[u8; 32] = b"\x0C\x40\x55\x0C\x2D\x41\x62\x2D\x03\x06\x48\x1E\x05\x48\x14\x05\x30\x32\x33\x34\x63\x63\x46\x33\x18\x09\x28\x0F\x06\x22\x39\x17";
 
-pub fn unpack(file_path: &PathBuf, to_directory: &PathBuf, assume_yes: bool) -> crate::Result<()> {
+pub fn unpack(file_path: &Path, to_directory: &Path, assume_yes: bool) -> crate::Result<()> {
     let file = std::fs::read(file_path).map_err(|e| format!("Failed to open .cmp file: {e}"))?;
 
     let mut reader = BufferReader::new(&file);
@@ -63,14 +66,14 @@ pub fn unpack(file_path: &PathBuf, to_directory: &PathBuf, assume_yes: bool) -> 
     Ok(())
 }
 
-pub fn pack(directory: &PathBuf, output: PathBuf) -> crate::Result<()> {
+pub fn pack(directory: &Path, output: &Path) -> crate::Result<()> {
     let base_dir = directory.to_string_lossy().to_string();
     let mut file_paths = Vec::new();
     let mut files = Vec::new();
 
     let mut current_offset = 4u32;
     let mut stack = Vec::new();
-    stack.push(directory.clone());
+    stack.push(directory.to_path_buf());
 
     while let Some(parent) = stack.pop() {
         if parent.is_dir() {

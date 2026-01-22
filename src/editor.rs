@@ -4,7 +4,7 @@ use eframe::egui::{self, Align2, Checkbox, DragValue, Layout};
 
 use crate::{buffer::BufferWriter, types::Format};
 
-const WINDOW_TITLE: &'static str = "Divine Tools";
+const WINDOW_TITLE: &str = "Divine Tools";
 
 pub fn run_editor() -> crate::Result<()> {
     let native_options = eframe::NativeOptions::default();
