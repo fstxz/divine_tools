@@ -13,17 +13,17 @@ pub struct World {
 
 #[derive(serde::Serialize, serde::Deserialize, Default, Clone)]
 struct Cell {
-    image_index1: i16,
-    image_index2: i16,
+    image_index: i16,
+    overlay_image_index: i16,
     unknown0: u16,
     unknown1: u8,
     unknown2: u32,
     unknown3: u32,
-    unknown_vec: Vec<Unknown0>,
+    objects: Vec<Object>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default, Clone)]
-struct Unknown0 {
+struct Object {
     unknown0: u16,
     unknown1: u16,
     unknown2: u16,
@@ -87,50 +87,50 @@ impl Binary for Cell {
     where
         Self: Sized,
     {
-        let image_index1 = reader.read_i16()?;
-        let image_index2 = reader.read_i16()?;
+        let image_index = reader.read_i16()?;
+        let overlay_image_index = reader.read_i16()?;
 
         let unknown0 = reader.read_u16()?;
 
-        let unknown_len = reader.read_u8()?;
+        let objects_len = reader.read_u8()?;
         let unknown1 = reader.read_u8()?;
 
         let unknown2 = reader.read_u32()?;
         let unknown3 = reader.read_u32()?;
 
-        let mut unknown_vec = Vec::with_capacity(unknown_len as usize);
+        let mut objects = Vec::with_capacity(objects_len as usize);
 
-        for _ in 0..unknown_len {
-            unknown_vec.push(Unknown0::from_bytes(reader)?);
+        for _ in 0..objects_len {
+            objects.push(Object::from_bytes(reader)?);
         }
 
         Ok(Self {
-            image_index1,
-            image_index2,
+            image_index,
+            overlay_image_index,
             unknown0,
             unknown1,
             unknown2,
             unknown3,
-            unknown_vec,
+            objects,
         })
     }
 
     fn to_bytes(&self, writer: &mut crate::buffer::BufferWriter) {
-        self.image_index1.to_bytes(writer);
-        self.image_index2.to_bytes(writer);
+        self.image_index.to_bytes(writer);
+        self.overlay_image_index.to_bytes(writer);
         self.unknown0.to_bytes(writer);
-        (self.unknown_vec.len() as u8).to_bytes(writer);
+        (self.objects.len() as u8).to_bytes(writer);
         self.unknown1.to_bytes(writer);
         self.unknown2.to_bytes(writer);
         self.unknown3.to_bytes(writer);
 
-        for unknown in &self.unknown_vec {
-            unknown.to_bytes(writer);
+        for object in &self.objects {
+            object.to_bytes(writer);
         }
     }
 }
 
-impl Binary for Unknown0 {
+impl Binary for Object {
     fn from_bytes(reader: &mut crate::buffer::BufferReader) -> crate::Result<Self>
     where
         Self: Sized,
@@ -159,6 +159,6 @@ impl Inspector for Cell {
     fn show(&mut self, _ui: &mut eframe::egui::Ui) {}
 }
 
-impl Inspector for Unknown0 {
+impl Inspector for Object {
     fn show(&mut self, _ui: &mut eframe::egui::Ui) {}
 }

@@ -12,6 +12,10 @@ impl<'a> BufferReader<'a> {
         }
     }
 
+    pub fn buffer(&self) -> &[u8] {
+        self.buffer
+    }
+
     pub fn len(&self) -> usize {
         self.buffer.len()
     }
@@ -26,6 +30,10 @@ impl<'a> BufferReader<'a> {
 
     pub fn skip(&mut self, count: usize) {
         self.position += count;
+    }
+
+    pub fn set_position(&mut self, position: usize) {
+        self.position = position;
     }
 
     pub fn read_u8(&mut self) -> crate::Result<u8> {
@@ -83,6 +91,7 @@ impl<'a> BufferReader<'a> {
 }
 
 /// Helper struct for writing data to a buffer.
+#[derive(Default)]
 pub struct BufferWriter {
     buffer: Vec<u8>,
 }
@@ -94,6 +103,10 @@ impl BufferWriter {
 
     pub fn len(&self) -> usize {
         self.buffer.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.buffer.is_empty()
     }
 
     pub fn write_u8(&mut self, value: u8) -> &mut Self {

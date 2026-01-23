@@ -21,6 +21,7 @@ use crate::{
 pub mod data;
 pub mod eggs;
 pub mod font;
+pub mod image_list;
 pub mod info;
 pub mod magic;
 pub mod music;
@@ -479,7 +480,7 @@ mod tests {
     use crate::{
         buffer::{BufferReader, BufferWriter},
         types::{
-            Binary, eggs::Eggs, info::Info, magic::Magic, music::Music,
+            Binary, eggs::Eggs, image_list::ImageListIndex, info::Info, magic::Magic, music::Music,
             osiris_objects::OsirisObjects, persist::Persist, props::Props, quest_log::QuestLog,
             quickinfo::QuickInfo, reverbs::Reverbs, shroud::Shroud, sound::SoundConfig,
             status_plate::StatusPlate, telpstates::TelpStates, text::Text, usernotes::Notes,
@@ -498,6 +499,7 @@ mod tests {
     #[test]
     fn load_save() {
         let path = PathBuf::from_iter([env!("CARGO_MANIFEST_DIR"), "tmp", "divine_divinity"]);
+        std::fs::canonicalize(&path).expect("path to Divine Divinity must exist");
 
         fn test_file<T: Binary>(path: &Path) {
             let input_file = std::fs::read(path).expect("must be able to read the file");
@@ -549,6 +551,20 @@ mod tests {
         test!(Text, "localizations/english/text.cmp");
         test!(StatusPlate, "dat/statuspl.cmp");
         test!(Eggs, "global/eggs.000");
+        test!(ImageListIndex, "static/imagelists/CPackedi.0c");
+        test!(ImageListIndex, "static/imagelists/CPackedi.1c");
+        test!(ImageListIndex, "static/imagelists/CPackedi.2c");
+        test!(ImageListIndex, "static/imagelists/CPackedi.3c");
+        test!(ImageListIndex, "static/imagelists/CPackedi.4c");
+        test!(ImageListIndex, "static/imagelists/CPackedi.5c");
+        test!(ImageListIndex, "static/imagelists/CPackedi.6c");
+        // TODO: implement image type 9
+        // test!(ImageListIndex, "static/imagelists/CPackedi.7c");
+        test!(ImageListIndex, "static/imagelists/CPackedi.8c");
+        test!(ImageListIndex, "static/imagelists/CPackedi.9c");
+        test!(ImageListIndex, "static/imagelists/CPackedi.10c");
+        test!(ImageListIndex, "static/imagelists/CPackedi.11c");
+        test!(ImageListIndex, "static/imagelists/CPackedi.12c");
         // TODO: implement
         // test!(Font, "fonts/dialog_white.fnt");
     }

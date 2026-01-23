@@ -4,9 +4,9 @@ use argh::FromArgs;
 
 use crate::editor::run_editor;
 
-mod buffer;
+pub mod buffer;
 mod editor;
-mod types;
+pub mod types;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
