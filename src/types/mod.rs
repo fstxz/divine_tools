@@ -473,9 +473,17 @@ impl Binary for i32 {
     }
 }
 
+/// Tests loading and saving binary files. When saving a file without making any changes,
+/// it should produce the exact same binary as the input file.
+///
+/// Assumes that the game directory is located at "tmp/divine_diviniy/"
+/// relative to the project root directory (can be a symlink).
+///
+/// Note: Objects000 and OsirisNames are not tested because original files contain
+/// garbage in fixed strings (after the null terminator) that gets cleaned after saving.
 #[cfg(test)]
-mod tests {
-    use std::path::{Path, PathBuf};
+mod load_save {
+    use std::path::PathBuf;
 
     use crate::{
         buffer::{BufferReader, BufferWriter},
@@ -488,84 +496,93 @@ mod tests {
         },
     };
 
-    /// Tests loading and saving binary files. When saving a file without making any changes,
-    /// it should produce the exact same binary as the input file.
-    ///
-    /// Assumes that the game directory is located at "tmp/divine_diviniy/"
-    /// relative to the project root directory (can be a symlink).
-    ///
-    /// Note: Objects000 and OsirisNames are not tested because original files contain
-    /// garbage in fixed strings (after the null terminator) that gets cleaned after saving.
-    #[test]
-    fn load_save() {
-        let path = PathBuf::from_iter([env!("CARGO_MANIFEST_DIR"), "tmp", "divine_divinity"]);
-        std::fs::canonicalize(&path).expect("path to Divine Divinity must exist");
+    fn load_save<T: Binary>(path: PathBuf) {
+        let dd_path = PathBuf::from_iter([env!("CARGO_MANIFEST_DIR"), "tmp", "divine_divinity"]);
+        std::fs::canonicalize(&dd_path).expect("path to Divine Divinity must exist");
+        let path = dd_path.join(path);
 
-        fn test_file<T: Binary>(path: &Path) {
-            let input_file = std::fs::read(path).expect("must be able to read the file");
+        let input_file = std::fs::read(&path).expect("must be able to read the file");
 
-            let mut reader = BufferReader::new(&input_file);
-            let binary = T::from_bytes(&mut reader).expect("must be able to read binary file");
+        let mut reader = BufferReader::new(&input_file);
+        let binary = T::from_bytes(&mut reader).expect("must be able to read binary file");
 
-            let mut writer = BufferWriter::new();
-            binary.to_bytes(&mut writer);
+        let mut writer = BufferWriter::new();
+        binary.to_bytes(&mut writer);
 
-            let output_file = writer.finish();
+        let output_file = writer.finish();
 
-            if input_file != output_file {
-                panic!(
-                    "input file at path \"{}\" differs from the output file",
-                    path.display()
-                );
-            }
+        if input_file != output_file {
+            panic!(
+                "input file at path \"{}\" differs from the output file",
+                path.display()
+            );
         }
-
-        macro_rules! test {
-            ($ty:ty, $path:expr) => {
-                test_file::<$ty>(&path.join(PathBuf::from_iter($path.split("/"))));
-            };
-        }
-
-        test!(World, "dynamic/world.x0");
-        test!(World, "dynamic/world.x1");
-        test!(World, "dynamic/world.x2");
-        test!(World, "dynamic/world.x3");
-        test!(World, "dynamic/world.x4");
-        test!(Shroud, "main/startup/shroud.x0");
-        test!(Shroud, "main/startup/shroud.x1");
-        test!(Shroud, "main/startup/shroud.x2");
-        test!(Shroud, "main/startup/shroud.x3");
-        test!(Shroud, "main/startup/shroud.x4");
-        test!(TelpStates, "main/startup/telpstates.000");
-        test!(Info, "main/startup/info.000");
-        test!(QuickInfo, "main/startup/quickinfo.000");
-        test!(QuestLog, "main/startup/quest_log.000");
-        test!(OsirisObjects, "main/startup/static/osiobjects.000");
-        test!(Magic, "dat/magic.cmp");
-        test!(Notes, "dat/usernotes.bin");
-        test!(Props, "dat/props.000");
-        test!(Persist, "persist.dat");
-        test!(Music, "sound/music.dat");
-        test!(Reverbs, "sound/reverbs.dat");
-        test!(SoundConfig, "sound.cfg");
-        test!(Text, "localizations/english/text.cmp");
-        test!(StatusPlate, "dat/statuspl.cmp");
-        test!(Eggs, "global/eggs.000");
-        test!(ImageListIndex, "static/imagelists/CPackedi.0c");
-        test!(ImageListIndex, "static/imagelists/CPackedi.1c");
-        test!(ImageListIndex, "static/imagelists/CPackedi.2c");
-        test!(ImageListIndex, "static/imagelists/CPackedi.3c");
-        test!(ImageListIndex, "static/imagelists/CPackedi.4c");
-        test!(ImageListIndex, "static/imagelists/CPackedi.5c");
-        test!(ImageListIndex, "static/imagelists/CPackedi.6c");
-        // TODO: implement image type 9
-        // test!(ImageListIndex, "static/imagelists/CPackedi.7c");
-        test!(ImageListIndex, "static/imagelists/CPackedi.8c");
-        test!(ImageListIndex, "static/imagelists/CPackedi.9c");
-        test!(ImageListIndex, "static/imagelists/CPackedi.10c");
-        test!(ImageListIndex, "static/imagelists/CPackedi.11c");
-        test!(ImageListIndex, "static/imagelists/CPackedi.12c");
-        // TODO: implement
-        // test!(Font, "fonts/dialog_white.fnt");
     }
+
+    macro_rules! test {
+        ($ty:ty, $fn:ident, $path:expr) => {
+            #[test]
+            fn $fn() {
+                load_save::<$ty>(PathBuf::from_iter($path.split("/")));
+            }
+        };
+    }
+
+    test!(World, world_x0, "dynamic/world.x0");
+    test!(World, world_x1, "dynamic/world.x1");
+    test!(World, world_x2, "dynamic/world.x2");
+    test!(World, world_x3, "dynamic/world.x3");
+    test!(World, world_x4, "dynamic/world.x4");
+    test!(Shroud, shroud_x0, "main/startup/shroud.x0");
+    test!(Shroud, shroud_x1, "main/startup/shroud.x1");
+    test!(Shroud, shroud_x2, "main/startup/shroud.x2");
+    test!(Shroud, shroud_x3, "main/startup/shroud.x3");
+    test!(Shroud, shroud_x4, "main/startup/shroud.x4");
+    test!(TelpStates, telpstates, "main/startup/telpstates.000");
+    test!(Info, info, "main/startup/info.000");
+    test!(QuickInfo, quickinfo, "main/startup/quickinfo.000");
+    test!(QuestLog, quest_log, "main/startup/quest_log.000");
+    test!(
+        OsirisObjects,
+        osiobjects,
+        "main/startup/static/osiobjects.000"
+    );
+    test!(Magic, magic, "dat/magic.cmp");
+    test!(Notes, usernotes, "dat/usernotes.bin");
+    test!(Props, props, "dat/props.000");
+    test!(Persist, persist, "persist.dat");
+    test!(Music, music, "sound/music.dat");
+    test!(Reverbs, reverbs, "sound/reverbs.dat");
+    test!(SoundConfig, sound, "sound.cfg");
+    test!(Text, text, "localizations/english/text.cmp");
+    test!(StatusPlate, statuspl, "dat/statuspl.cmp");
+    test!(Eggs, eggs, "global/eggs.000");
+    test!(ImageListIndex, cpackedi_0c, "static/imagelists/CPackedi.0c");
+    test!(ImageListIndex, cpackedi_1c, "static/imagelists/CPackedi.1c");
+    test!(ImageListIndex, cpackedi_2c, "static/imagelists/CPackedi.2c");
+    test!(ImageListIndex, cpackedi_3c, "static/imagelists/CPackedi.3c");
+    test!(ImageListIndex, cpackedi_4c, "static/imagelists/CPackedi.4c");
+    test!(ImageListIndex, cpackedi_5c, "static/imagelists/CPackedi.5c");
+    test!(ImageListIndex, cpackedi_6c, "static/imagelists/CPackedi.6c");
+    // TODO: implement image type 9
+    // test!(ImageListIndex, "static/imagelists/CPackedi.7c");
+    test!(ImageListIndex, cpackedi_8c, "static/imagelists/CPackedi.8c");
+    test!(ImageListIndex, cpackedi_9c, "static/imagelists/CPackedi.9c");
+    test!(
+        ImageListIndex,
+        cpackedi_10c,
+        "static/imagelists/CPackedi.10c"
+    );
+    test!(
+        ImageListIndex,
+        cpackedi_11c,
+        "static/imagelists/CPackedi.11c"
+    );
+    test!(
+        ImageListIndex,
+        cpackedi_12c,
+        "static/imagelists/CPackedi.12c"
+    );
+    // TODO: implement
+    // test!(Font, "fonts/dialog_white.fnt");
 }

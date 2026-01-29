@@ -586,13 +586,12 @@ fn read_u16(ptr: usize, buf: &[u8]) -> u16 {
 }
 
 #[cfg(test)]
-mod tests {
+mod compressed {
     use std::path::PathBuf;
 
     use crate::types::image_list::load_image_list;
 
-    #[test]
-    fn compressed() {
+    fn compressed(index: usize) {
         let path = PathBuf::from_iter([
             env!("CARGO_MANIFEST_DIR"),
             "tmp",
@@ -603,24 +602,38 @@ mod tests {
 
         let path = std::fs::canonicalize(&path).expect("path to image lists must exist");
 
-        for i in 0..13 {
-            // 12th image list is not actually an image list.
-            // Potentially unused, but the game still checks its existence.
-            if i == 11 {
-                continue;
-            }
+        let image_list = load_image_list(
+            &path.join(format!("CPackedb.{index}c")),
+            &path.join(format!("CPackedi.{index}c")),
+            true,
+        );
 
-            let image_list = load_image_list(
-                &path.join(format!("CPackedb.{i}c")),
-                &path.join(format!("CPackedi.{i}c")),
-                true,
-            );
-
-            if i == 7 {
-                assert!(image_list.is_err());
-            } else {
-                assert!(image_list.is_ok());
-            }
+        if index == 7 {
+            assert!(image_list.is_err());
+        } else {
+            assert!(image_list.is_ok());
         }
     }
+
+    macro_rules! test {
+        ($fn:ident, $index:expr) => {
+            #[test]
+            fn $fn() {
+                compressed($index);
+            }
+        };
+    }
+
+    test!(i0, 0);
+    test!(i1, 1);
+    test!(i2, 2);
+    test!(i3, 3);
+    test!(i4, 4);
+    test!(i5, 5);
+    test!(i6, 6);
+    test!(i7, 7);
+    test!(i8, 8);
+    test!(i9, 9);
+    test!(i10, 10);
+    test!(i12, 12);
 }
