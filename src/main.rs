@@ -10,7 +10,7 @@ pub mod types;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-/// Tool for inspecting and modifying various binary files from Divine Divinity and Beyond Divinity.
+/// Modding tools for Divine Divinity.
 #[derive(FromArgs)]
 struct Args {
     #[argh(subcommand)]

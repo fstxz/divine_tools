@@ -18,6 +18,7 @@ codegen-units = 1
 
 [dependencies]
 argh = { version = "0.1.13", default-features = false, features = ["help"] }
+directories = "6.0.0"
 eframe = "0.33.3"
 erased-serde = "0.4.9"
 rfd = "0.16.0"

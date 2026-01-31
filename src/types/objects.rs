@@ -12,10 +12,22 @@ pub struct Objects {
     objects: Vec<Object>,
 }
 
+impl Objects {
+    pub fn get(&self, index: usize) -> Option<&Object> {
+        self.objects.get(index)
+    }
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-struct Object {
+pub struct Object {
     unknown0: FixedArray<u8, 26>,
     image_index: u16,
+}
+
+impl Object {
+    pub fn image_index(&self) -> u16 {
+        self.image_index
+    }
 }
 
 impl Binary for Objects {

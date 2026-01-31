@@ -135,7 +135,7 @@ impl<'de> serde::Deserialize<'de> for Format {
 }
 
 impl Format {
-    pub fn from_file(path: &PathBuf) -> crate::Result<Self> {
+    pub(crate) fn from_file(path: &PathBuf) -> crate::Result<Self> {
         let file_name = path
             .file_name()
             .expect("must have file name")

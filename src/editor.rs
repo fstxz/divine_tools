@@ -1,19 +1,34 @@
-use std::path::PathBuf;
+use std::{
+    borrow::Cow,
+    path::PathBuf,
+    sync::{Arc, Mutex, MutexGuard, OnceLock},
+};
 
-use eframe::egui::{self, Align2, Checkbox, DragValue, Layout};
+use directories::ProjectDirs;
+use eframe::egui::{
+    self, Align2, Checkbox, DragValue, Grid, Hyperlink, Layout, MenuBar, ScrollArea,
+    ViewportBuilder, ViewportId, vec2,
+};
 
 use crate::{buffer::BufferWriter, types::Format};
 
 const WINDOW_TITLE: &str = "Divine Tools";
+const CONFIG_NAME: &str = "config.json";
+
+static CONFIG: OnceLock<Arc<Mutex<Config>>> = OnceLock::new();
 
 pub fn run_editor() -> crate::Result<()> {
+    Config::load().map_err(|e| format!("Failed to load config: {e}"))?;
+
     let native_options = eframe::NativeOptions::default();
     let app = Editor::default();
+
     eframe::run_native(
         WINDOW_TITLE,
         native_options,
         Box::new(|_| Ok(Box::new(app))),
     )?;
+
     Ok(())
 }
 
@@ -21,6 +36,9 @@ pub fn run_editor() -> crate::Result<()> {
 pub struct Editor {
     loaded_file: Option<Format>,
     message: Option<Message>,
+    show_preferences: bool,
+    show_world_editor_help: bool,
+    show_about: bool,
 }
 
 impl Editor {
@@ -29,6 +47,147 @@ impl Editor {
             text: text.to_owned(),
             severity,
         });
+    }
+
+    fn show_preferences(&mut self, ctx: &egui::Context) {
+        let viewport_id = ViewportId::from_hash_of("preferences");
+        ctx.show_viewport_immediate(
+            viewport_id,
+            ViewportBuilder::default().with_title("Preferences"),
+            |ctx, _| {
+                let mut config = Config::get();
+
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    ui.allocate_ui(ui.available_size() - vec2(0.0, 30.0), |ui| {
+                        ScrollArea::vertical()
+                            .auto_shrink([false; 2])
+                            .show(ui, |ui| {
+                                ui.heading("General");
+
+                                Grid::new("prefs_general")
+                                    .num_columns(2)
+                                    .striped(true)
+                                    .min_col_width(200.0)
+                                    .show(ui, |ui| {
+                                        ui.label("Path to Divine Divinity");
+
+                                        ui.allocate_ui(ui.available_size(), |ui| {
+                                            if ui.button("Browse").clicked() {
+                                                let Some(path) =
+                                                    rfd::FileDialog::new().pick_folder()
+                                                else {
+                                                    return;
+                                                };
+
+                                                config.dd_path = path;
+                                            }
+
+                                            let mut path = config.dd_path.to_string_lossy();
+                                            ui.centered_and_justified(|ui| {
+                                                ui.text_edit_singleline(&mut path);
+                                            });
+
+                                            if let Cow::Owned(new_path) = path {
+                                                config.dd_path = new_path.into();
+                                            }
+                                        });
+
+                                        ui.end_row();
+                                    });
+                            });
+                    });
+
+                    ui.vertical_centered(|ui| {
+                        if ui.button("Apply").clicked()
+                            && let Err(e) = config.save()
+                        {
+                            self.show_message(
+                                &format!("Failed to save preferences: {e}"),
+                                MessageSeverity::Error,
+                            );
+                        }
+                    });
+                });
+
+                ctx.input(|i| {
+                    if i.viewport().close_requested() {
+                        self.show_preferences = false;
+                    }
+                });
+            },
+        );
+    }
+
+    fn show_world_editor_help(&mut self, ctx: &egui::Context) {
+        let viewport_id = ViewportId::from_hash_of("world_editor_help");
+        ctx.show_viewport_immediate(
+            viewport_id,
+            ViewportBuilder::default()
+                .with_title("World editor help")
+                .with_inner_size(vec2(500.0, 400.0)),
+            |ctx, _| {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    ui.heading("Navigation");
+
+                    ui.label("To pan the view, press any mouse button and move the mouse. You can also use scroll bars on the sides.");
+
+                    ui.heading("Painting");
+
+                    ui.label("On the right side, select a tile to paint. Pressing left mouse \
+                        button will select primary tile, and pressing right mouse button will \
+                        select an overlay tile that will be painted on top of primary.");
+
+                    ui.label("To place a primary tile, hold CTRL and press left mouse button. \
+                        To place an overlay tile, hold CTRL and press right mouse button.");
+
+                    ui.label("To erase an overlay tile under the cursor, hold X and press right mouse button. \
+                        You can not erase primary tile.");
+
+                    ui.heading("Objects");
+
+                    ui.label("Holding ALT will highlight all objects. To select an object, click on it while holding ALT. \
+                        When object is selected, you can drag it to move it to a different place.");
+
+                    ui.separator();
+
+                    ui.label("To undo changes, press CTRL+Z. To redo, press CTRL+SHIFT+Z.");
+
+                    ctx.input(|i| {
+                        if i.viewport().close_requested() {
+                            self.show_world_editor_help = false;
+                        }
+                    });
+                });
+            },
+        );
+    }
+
+    fn show_about(&mut self, ctx: &egui::Context) {
+        let viewport_id = ViewportId::from_hash_of("about");
+        ctx.show_viewport_immediate(
+            viewport_id,
+            ViewportBuilder::default()
+                .with_title("About")
+                .with_inner_size(vec2(200.0, 100.0)),
+            |ctx, _| {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    ui.vertical_centered_justified(|ui| {
+                        ui.label("Divine Tools");
+                        ui.label(format!("Version {}", env!("CARGO_PKG_VERSION")));
+                        ui.add(Hyperlink::from_label_and_url(
+                            "GitHub",
+                            "https://github.com/fstxz/divine_tools",
+                        ));
+                    });
+
+                    ctx.input(|i| {
+                        if i.viewport().close_requested() {
+                            self.show_about = false;
+                        }
+                    });
+                });
+            },
+        );
     }
 }
 
@@ -72,148 +231,181 @@ impl eframe::App for Editor {
         }
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-            ui.menu_button("File", |ui| {
-                if ui.button("Open").clicked() {
-                    let file_dialog = rfd::FileDialog::new();
+            MenuBar::new().ui(ui, |ui| {
+                ui.menu_button("File", |ui| {
+                    if ui.button("Open").clicked() {
+                        let file_dialog = rfd::FileDialog::new();
 
-                    let Some(file_path) = file_dialog.pick_file() else {
-                        return;
-                    };
+                        let Some(file_path) = file_dialog.pick_file() else {
+                            return;
+                        };
 
-                    match Format::from_file(&file_path) {
-                        Ok(v) => {
-                            ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!(
-                                "{WINDOW_TITLE} - {}",
-                                file_path.display()
-                            )));
-                            self.loaded_file = Some(v)
-                        }
-                        Err(e) => {
-                            self.show_message(
-                                &format!("Failed to load file: {e}"),
-                                MessageSeverity::Error,
-                            );
+                        match Format::from_file(&file_path).and_then(|mut v| {
+                            v.binary.init(&Context { ui })?;
+                            Ok(v)
+                        }) {
+                            Ok(v) => {
+                                ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!(
+                                    "{WINDOW_TITLE} - {}",
+                                    file_path.display()
+                                )));
+                                self.loaded_file = Some(v)
+                            }
+                            Err(e) => {
+                                self.show_message(&format!("{e}"), MessageSeverity::Error);
+                            }
                         }
                     }
-                }
-
-                ui.separator();
-
-                ui.add_enabled_ui(self.loaded_file.is_some(), |ui| {
-                    let save_clicked = ui.button("Save").clicked();
-                    let save_as_clicked = ui.button("Save As...").clicked();
 
                     ui.separator();
 
-                    let export_clicked = ui.button("Export as JSON").clicked();
+                    ui.add_enabled_ui(self.loaded_file.is_some(), |ui| {
+                        let save_clicked = ui.button("Save").clicked();
+                        let save_as_clicked = ui.button("Save As...").clicked();
 
-                    if let Some(loaded_file) = &self.loaded_file {
-                        if export_clicked {
-                            let file_dialog = rfd::FileDialog::new()
-                                .set_directory(
-                                    std::env::current_dir()
-                                        .expect("must be able to get current directory"),
-                                )
-                                .set_file_name(
-                                    loaded_file
-                                        .file_name
-                                        .as_ref()
-                                        .unwrap_or(&PathBuf::from("file"))
-                                        .with_added_extension("json")
-                                        .to_string_lossy(),
-                                );
+                        ui.separator();
 
-                            let Some(path) = file_dialog.save_file() else {
-                                return;
-                            };
+                        let export_clicked = ui.button("Export as JSON").clicked();
 
-                            let Ok(serialized) = serde_json::to_string_pretty(&loaded_file) else {
-                                self.show_message(
-                                    "Failed to serialize the file",
-                                    MessageSeverity::Error,
-                                );
-                                return;
-                            };
-
-                            if let Err(e) = std::fs::write(path, serialized) {
-                                self.show_message(
-                                    &format!("Failed to write to file: {e}"),
-                                    MessageSeverity::Error,
-                                );
-                                return;
-                            }
-                        }
-
-                        if save_clicked || save_as_clicked {
-                            let mut writer = BufferWriter::new();
-                            loaded_file.binary.to_bytes(&mut writer);
-                            let bytes = writer.finish();
-
-                            let path = if save_as_clicked {
-                                let file_dialog = rfd::FileDialog::new();
+                        if let Some(loaded_file) = &self.loaded_file {
+                            if export_clicked {
+                                let file_dialog = rfd::FileDialog::new()
+                                    .set_directory(
+                                        std::env::current_dir()
+                                            .expect("must be able to get current directory"),
+                                    )
+                                    .set_file_name(
+                                        loaded_file
+                                            .file_name
+                                            .as_ref()
+                                            .unwrap_or(&PathBuf::from("file"))
+                                            .with_added_extension("json")
+                                            .to_string_lossy(),
+                                    );
 
                                 let Some(path) = file_dialog.save_file() else {
                                     return;
                                 };
 
-                                path
-                            } else {
-                                match &loaded_file.path {
-                                    Some(p) => p.clone(),
-                                    None => {
-                                        let file_dialog = rfd::FileDialog::new();
+                                let Ok(serialized) = serde_json::to_string_pretty(&loaded_file)
+                                else {
+                                    self.show_message(
+                                        "Failed to serialize the file",
+                                        MessageSeverity::Error,
+                                    );
+                                    return;
+                                };
 
-                                        let Some(path) = file_dialog.save_file() else {
-                                            return;
-                                        };
-
-                                        path
-                                    }
+                                if let Err(e) = std::fs::write(path, serialized) {
+                                    self.show_message(
+                                        &format!("Failed to write to file: {e}"),
+                                        MessageSeverity::Error,
+                                    );
+                                    return;
                                 }
-                            };
+                            }
 
-                            if let Err(e) = std::fs::write(path, bytes) {
-                                eprintln!("Failed to write to a file: {e}");
+                            if save_clicked || save_as_clicked {
+                                let mut writer = BufferWriter::new();
+                                loaded_file.binary.to_bytes(&mut writer);
+                                let bytes = writer.finish();
+
+                                let path = if save_as_clicked {
+                                    let file_dialog = rfd::FileDialog::new();
+
+                                    let Some(path) = file_dialog.save_file() else {
+                                        return;
+                                    };
+
+                                    path
+                                } else {
+                                    match &loaded_file.path {
+                                        Some(p) => p.clone(),
+                                        None => {
+                                            let file_dialog = rfd::FileDialog::new();
+
+                                            let Some(path) = file_dialog.save_file() else {
+                                                return;
+                                            };
+
+                                            path
+                                        }
+                                    }
+                                };
+
+                                if let Err(e) = std::fs::write(path, bytes) {
+                                    eprintln!("Failed to write to a file: {e}");
+                                }
                             }
                         }
+                    });
+
+                    let import_clicked = ui.button("Import from JSON").clicked();
+
+                    if import_clicked {
+                        let file_dialog = rfd::FileDialog::new();
+
+                        let Some(path) = file_dialog.pick_file() else {
+                            return;
+                        };
+
+                        let file = match std::fs::read_to_string(&path) {
+                            Ok(f) => f,
+                            Err(e) => {
+                                self.show_message(
+                                    &format!("Failed to open file at {}: {e}", path.display()),
+                                    MessageSeverity::Error,
+                                );
+                                return;
+                            }
+                        };
+
+                        let Ok(deserialized) = serde_json::from_str::<Format>(&file) else {
+                            self.show_message("Failed to load file", MessageSeverity::Error);
+                            return;
+                        };
+
+                        self.loaded_file = Some(deserialized);
+                    }
+
+                    ui.separator();
+
+                    if ui.button("Quit").clicked() {
+                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
                     }
                 });
 
-                let import_clicked = ui.button("Import from JSON").clicked();
+                ui.menu_button("Edit", |ui| {
+                    if ui.button("Preferences").clicked() {
+                        self.show_preferences = true;
+                    }
+                });
 
-                if import_clicked {
-                    let file_dialog = rfd::FileDialog::new();
+                ui.menu_button("Help", |ui| {
+                    if ui.button("World editor").clicked() {
+                        self.show_world_editor_help = true;
+                    }
 
-                    let Some(path) = file_dialog.pick_file() else {
-                        return;
-                    };
+                    ui.separator();
 
-                    let file = match std::fs::read_to_string(&path) {
-                        Ok(f) => f,
-                        Err(e) => {
-                            self.show_message(
-                                &format!("Failed to open file at {}: {e}", path.display()),
-                                MessageSeverity::Error,
-                            );
-                            return;
-                        }
-                    };
-
-                    let Ok(deserialized) = serde_json::from_str::<Format>(&file) else {
-                        self.show_message("Failed to load file", MessageSeverity::Error);
-                        return;
-                    };
-
-                    self.loaded_file = Some(deserialized);
-                }
-
-                ui.separator();
-
-                if ui.button("Quit").clicked() {
-                    ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
-                }
+                    if ui.button("About").clicked() {
+                        self.show_about = true;
+                    }
+                });
             });
         });
+
+        if self.show_preferences {
+            self.show_preferences(ctx);
+        }
+
+        if self.show_world_editor_help {
+            self.show_world_editor_help(ctx);
+        }
+
+        if self.show_about {
+            self.show_about(ctx);
+        }
 
         egui::CentralPanel::default().show(ctx, |ui| match &mut self.loaded_file {
             Some(file) => {
@@ -233,7 +425,15 @@ impl eframe::App for Editor {
 }
 
 pub trait Inspector: 'static {
+    fn init(&mut self, _ctx: &Context) -> crate::Result<()> {
+        Ok(())
+    }
+
     fn show(&mut self, ui: &mut egui::Ui);
+}
+
+pub struct Context<'a> {
+    pub ui: &'a egui::Ui,
 }
 
 pub fn struct_ui(ui: &mut egui::Ui, add_contents: impl FnOnce(&mut egui::Ui)) {
@@ -406,5 +606,57 @@ impl Inspector for bool {
 impl Inspector for i32 {
     fn show(&mut self, ui: &mut egui::Ui) {
         ui.add(DragValue::new(self));
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Default)]
+pub(crate) struct Config {
+    pub dd_path: PathBuf,
+}
+
+impl Config {
+    const QUALIFIER: &str = "org";
+    const ORGANIZATION: &str = "Divine Tools";
+    const APPLICATION: &str = "Divine Tools";
+
+    pub fn get<'a>() -> MutexGuard<'a, Self> {
+        CONFIG.get().unwrap().lock().unwrap()
+    }
+
+    fn load() -> crate::Result<()> {
+        let Some(dirs) = Self::get_project_dirs() else {
+            return Err("couldn't retrieve config directory".into());
+        };
+
+        let path = dirs.config_dir().join(CONFIG_NAME);
+
+        if !std::fs::exists(&path)? {
+            std::fs::create_dir_all(dirs.config_dir())?;
+            std::fs::write(&path, serde_json::to_string_pretty(&Config::default())?)?;
+        }
+
+        let file = std::fs::read_to_string(&path)?;
+
+        let config = serde_json::from_str(&file)?;
+        CONFIG.get_or_init(|| Arc::new(Mutex::new(config)));
+
+        Ok(())
+    }
+
+    fn save(&self) -> crate::Result<()> {
+        let serialized = serde_json::to_string_pretty(self)?;
+
+        let Some(dirs) = Self::get_project_dirs() else {
+            return Err("couldn't retrieve config directory".into());
+        };
+
+        std::fs::create_dir_all(dirs.config_dir())?;
+        std::fs::write(dirs.config_dir().join(CONFIG_NAME), serialized)?;
+
+        Ok(())
+    }
+
+    fn get_project_dirs() -> Option<ProjectDirs> {
+        directories::ProjectDirs::from(Self::QUALIFIER, Self::ORGANIZATION, Self::APPLICATION)
     }
 }

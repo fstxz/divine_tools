@@ -21,8 +21,14 @@ pub struct ImageListIndex {
     entries: Vec<IndexEntry>,
 }
 
+impl ImageListIndex {
+    pub fn get(&self, index: usize) -> Option<&IndexEntry> {
+        self.entries.get(index)
+    }
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-struct IndexEntry {
+pub struct IndexEntry {
     offset: u32,
     width: u32,
     height: u32,
@@ -40,8 +46,26 @@ struct IndexEntry {
     unknown10: u32,
 }
 
+impl IndexEntry {
+    pub fn offset(&self) -> u32 {
+        self.offset
+    }
+
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.height
+    }
+
+    pub fn image_type(&self) -> ImageType {
+        self.image_type
+    }
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Default, Clone, Copy)]
-enum ImageType {
+pub enum ImageType {
     #[default]
     Opaque = 0,
     Transparent = 1,
@@ -60,6 +84,10 @@ impl Image {
 
     pub fn height(&self) -> u32 {
         self.height
+    }
+
+    pub fn image_data(&self) -> &[[u8; 4]] {
+        &self.image_data
     }
 }
 
@@ -202,7 +230,7 @@ pub fn load_image_list(
     Ok(ImageList { images })
 }
 
-fn decode_opaque_image(bytes: &[u8], width: u32, height: u32) -> crate::Result<Image> {
+pub fn decode_opaque_image(bytes: &[u8], width: u32, height: u32) -> crate::Result<Image> {
     let mut reader = BufferReader::new(bytes);
     let mut image_data = Vec::with_capacity((width * height) as usize);
 
@@ -218,7 +246,7 @@ fn decode_opaque_image(bytes: &[u8], width: u32, height: u32) -> crate::Result<I
     })
 }
 
-fn decode_transparent_image(bytes: &[u8]) -> crate::Result<Image> {
+pub fn decode_transparent_image(bytes: &[u8]) -> crate::Result<Image> {
     let mut reader = BufferReader::new(bytes);
     let _size = reader.read_u32()?;
     let data_offset = reader.read_u32()? as usize;

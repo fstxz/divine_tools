@@ -1,18 +1,18 @@
 # Divine Tools
 
-Tool for inspecting and modifying various binary files from Divine Divinity and Beyond Divinity.
+Modding tools for Divine Divinity.
 
 ## Usage
 
-### Binary editor
+### Editor
 
-Launching the program without any arguments will open the editor that allows to inspect and edit binary files.
+Launching the program without any arguments will open the editor that allows to open and edit various binary files. To launch the world editor, open a world file (`world.xN`) located in `main/startup` or in a save game folder.
 
 ### Packed `.cmp` files
 
 Note: This only works with files that have other files embedded inside them. Full list of those files: `flat.cmp`, `global.cmp`, `sound.cmp`, `voice.cmp`.
 
-To unpack a file, run `dt.exe unpack <path-to-cmp>` (or `dt` if you are on Linux), where `<path-to-cmp>` is the path to the `.cmp` file. Files will be extracted to the current working directory, so make sure it's empty to avoid overwriting other files.
+To unpack a file, run `dt.exe unpack <path-to-cmp>` in a terminal (or `dt` if you are on Linux), where `<path-to-cmp>` is the path to the `.cmp` file. Files will be extracted to the current working directory, so make sure it's empty to avoid overwriting other files.
 
 To pack files in the current directory back into a `.cmp` file, run `dt.exe pack`. You can specify output file name with the `-o` argument, e.g. `dt.exe pack -o global.cmp`
 
