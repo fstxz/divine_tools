@@ -10,11 +10,11 @@ use crate::{
     buffer::{BufferReader, BufferWriter},
     editor::Inspector,
     types::{
-        eggs::Eggs, font::Font, info::Info, magic::Magic, music::Music, objects_000::Objects000,
-        osiris_names::OsirisNames, osiris_objects::OsirisObjects, persist::Persist, props::Props,
-        quest_log::QuestLog, quickinfo::QuickInfo, reverbs::Reverbs, shroud::Shroud,
-        sound::SoundConfig, status_plate::StatusPlate, telpstates::TelpStates, text::Text,
-        usernotes::Notes, world::World,
+        eggs::Eggs, font::Font, info::Info, magic::Magic, music::Music, objects::Objects,
+        objects_000::Objects000, osiris_names::OsirisNames, osiris_objects::OsirisObjects,
+        persist::Persist, props::Props, quest_log::QuestLog, quickinfo::QuickInfo,
+        reverbs::Reverbs, shroud::Shroud, sound::SoundConfig, status_plate::StatusPlate,
+        telpstates::TelpStates, text::Text, usernotes::Notes, world::World,
     },
 };
 
@@ -25,6 +25,7 @@ pub mod image_list;
 pub mod info;
 pub mod magic;
 pub mod music;
+pub mod objects;
 pub mod objects_000;
 pub mod osiris_names;
 pub mod osiris_objects;
@@ -117,6 +118,7 @@ impl<'de> serde::Deserialize<'de> for Format {
                     FormatType::Info => Box::new(map.next_value::<Info>()?),
                     FormatType::Shroud => Box::new(map.next_value::<Shroud>()?),
                     FormatType::World => Box::new(map.next_value::<World>()?),
+                    FormatType::Objects => Box::new(map.next_value::<Objects>()?),
                 };
 
                 Ok(Format {
@@ -170,6 +172,8 @@ impl Format {
                         (FormatType::Shroud, from_bytes_dyn::<Shroud>)
                     } else if stem == "world" {
                         (FormatType::World, from_bytes_dyn::<World>)
+                    } else if stem == "objects" {
+                        (FormatType::Objects, from_bytes_dyn::<Objects>)
                     } else {
                         return Err("Unknown file format".into());
                     }
@@ -218,6 +222,7 @@ enum FormatType {
     Info,
     Shroud,
     World,
+    Objects,
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
@@ -489,10 +494,10 @@ mod load_save {
         buffer::{BufferReader, BufferWriter},
         types::{
             Binary, eggs::Eggs, image_list::ImageListIndex, info::Info, magic::Magic, music::Music,
-            osiris_objects::OsirisObjects, persist::Persist, props::Props, quest_log::QuestLog,
-            quickinfo::QuickInfo, reverbs::Reverbs, shroud::Shroud, sound::SoundConfig,
-            status_plate::StatusPlate, telpstates::TelpStates, text::Text, usernotes::Notes,
-            world::World,
+            objects::Objects, osiris_objects::OsirisObjects, persist::Persist, props::Props,
+            quest_log::QuestLog, quickinfo::QuickInfo, reverbs::Reverbs, shroud::Shroud,
+            sound::SoundConfig, status_plate::StatusPlate, telpstates::TelpStates, text::Text,
+            usernotes::Notes, world::World,
         },
     };
 
@@ -533,6 +538,11 @@ mod load_save {
     test!(World, world_x2, "dynamic/world.x2");
     test!(World, world_x3, "dynamic/world.x3");
     test!(World, world_x4, "dynamic/world.x4");
+    test!(Objects, objects_x0, "main/startup/objects.x0");
+    test!(Objects, objects_x1, "main/startup/objects.x1");
+    test!(Objects, objects_x2, "main/startup/objects.x2");
+    test!(Objects, objects_x3, "main/startup/objects.x3");
+    test!(Objects, objects_x4, "main/startup/objects.x4");
     test!(Shroud, shroud_x0, "main/startup/shroud.x0");
     test!(Shroud, shroud_x1, "main/startup/shroud.x1");
     test!(Shroud, shroud_x2, "main/startup/shroud.x2");
