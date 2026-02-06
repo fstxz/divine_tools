@@ -34,7 +34,7 @@ impl Binary for Notes {
         // User notes' buffer length. We will calculate it during serialization.
         reader.skip(4);
 
-        let mut user_notes = Vec::with_capacity(user_notes_count as usize);
+        let mut user_notes = Vec::new();
 
         for _ in 0..user_notes_count {
             user_notes.push(Note::from_bytes(reader)?);

@@ -134,7 +134,7 @@ impl Binary for Cell {
         let unknown2 = reader.read_u32()?;
         let unknown3 = reader.read_u32()?;
 
-        let mut objects = Vec::with_capacity(objects_len as usize);
+        let mut objects = Vec::new();
 
         for _ in 0..objects_len {
             objects.push(Object::from_bytes(reader)?);

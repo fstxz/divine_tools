@@ -271,7 +271,7 @@ impl<T: Binary + Default + serde::Serialize> Binary for Vec<T> {
         Self: Sized,
     {
         let len = reader.read_u32()? as usize;
-        let mut array = Vec::with_capacity(len);
+        let mut array = Vec::new();
 
         for _ in 0..len {
             array.push(T::from_bytes(reader)?);
