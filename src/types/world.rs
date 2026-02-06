@@ -284,7 +284,7 @@ impl Inspector for World {
             command_history: CommandHistory::default(),
         }));
 
-        WORLD_EDITOR.get_or_init(|| world_editor);
+        let _ = WORLD_EDITOR.set(world_editor);
 
         Ok(())
     }

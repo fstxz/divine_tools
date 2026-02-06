@@ -7,7 +7,7 @@ use std::{
 use directories::ProjectDirs;
 use eframe::egui::{
     self, Align2, Checkbox, DragValue, Grid, Hyperlink, Layout, MenuBar, ScrollArea,
-    ViewportBuilder, ViewportId, vec2,
+    ThemePreference, ViewportBuilder, ViewportId, vec2,
 };
 
 use crate::{buffer::BufferWriter, types::Format};
@@ -26,7 +26,23 @@ pub fn run_editor() -> crate::Result<()> {
     eframe::run_native(
         WINDOW_TITLE,
         native_options,
-        Box::new(|_| Ok(Box::new(app))),
+        Box::new(|ctx| {
+            let config = Config::get();
+
+            match config.theme {
+                ColorTheme::System => ctx
+                    .egui_ctx
+                    .options_mut(|o| o.theme_preference = ThemePreference::System),
+                ColorTheme::Light => ctx
+                    .egui_ctx
+                    .options_mut(|o| o.theme_preference = ThemePreference::Light),
+                ColorTheme::Dark => ctx
+                    .egui_ctx
+                    .options_mut(|o| o.theme_preference = ThemePreference::Dark),
+            }
+
+            Ok(Box::new(app))
+        }),
     )?;
 
     Ok(())
@@ -94,17 +110,58 @@ impl Editor {
 
                                         ui.end_row();
                                     });
+
+                                ui.heading("Appearance");
+
+                                Grid::new("prefs_appearance")
+                                    .num_columns(2)
+                                    .striped(true)
+                                    .min_col_width(200.0)
+                                    .show(ui, |ui| {
+                                        ui.label("Theme");
+
+                                        ui.allocate_ui(ui.available_size(), |ui| {
+                                            ui.radio_value(
+                                                &mut config.theme,
+                                                ColorTheme::System,
+                                                "System",
+                                            );
+                                            ui.radio_value(
+                                                &mut config.theme,
+                                                ColorTheme::Light,
+                                                "Light",
+                                            );
+                                            ui.radio_value(
+                                                &mut config.theme,
+                                                ColorTheme::Dark,
+                                                "Dark",
+                                            );
+                                        });
+                                    });
                             });
                     });
 
                     ui.vertical_centered(|ui| {
-                        if ui.button("Apply").clicked()
-                            && let Err(e) = config.save()
-                        {
-                            self.show_message(
-                                &format!("Failed to save preferences: {e}"),
-                                MessageSeverity::Error,
-                            );
+                        if ui.button("Apply").clicked() {
+                            match config.save() {
+                                Ok(_) => match config.theme {
+                                    ColorTheme::System => ctx.options_mut(|o| {
+                                        o.theme_preference = ThemePreference::System
+                                    }),
+                                    ColorTheme::Light => ctx.options_mut(|o| {
+                                        o.theme_preference = ThemePreference::Light
+                                    }),
+                                    ColorTheme::Dark => ctx.options_mut(|o| {
+                                        o.theme_preference = ThemePreference::Dark
+                                    }),
+                                },
+                                Err(e) => {
+                                    self.show_message(
+                                        &format!("Failed to save preferences: {e}"),
+                                        MessageSeverity::Error,
+                                    );
+                                }
+                            }
                         }
                     });
                 });
@@ -611,7 +668,10 @@ impl Inspector for i32 {
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
 pub(crate) struct Config {
+    #[serde(default)]
     pub dd_path: PathBuf,
+    #[serde(default)]
+    pub theme: ColorTheme,
 }
 
 impl Config {
@@ -638,7 +698,7 @@ impl Config {
         let file = std::fs::read_to_string(&path)?;
 
         let config = serde_json::from_str(&file)?;
-        CONFIG.get_or_init(|| Arc::new(Mutex::new(config)));
+        let _ = CONFIG.set(Arc::new(Mutex::new(config)));
 
         Ok(())
     }
@@ -659,4 +719,12 @@ impl Config {
     fn get_project_dirs() -> Option<ProjectDirs> {
         directories::ProjectDirs::from(Self::QUALIFIER, Self::ORGANIZATION, Self::APPLICATION)
     }
+}
+
+#[derive(Default, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
+pub(crate) enum ColorTheme {
+    #[default]
+    System,
+    Light,
+    Dark,
 }
