@@ -305,7 +305,7 @@ impl Inspector for World {
         } = world_editor.as_deref_mut().unwrap();
 
         ui.input(|i| {
-            if i.modifiers.ctrl && i.key_down(Key::Z) {
+            if i.modifiers.ctrl && i.key_pressed(Key::Z) {
                 if i.modifiers.shift {
                     command_history.redo_action(self);
                 } else {
