@@ -533,11 +533,11 @@ mod load_save {
         };
     }
 
-    test!(World, world_x0, "dynamic/world.x0");
-    test!(World, world_x1, "dynamic/world.x1");
-    test!(World, world_x2, "dynamic/world.x2");
-    test!(World, world_x3, "dynamic/world.x3");
-    test!(World, world_x4, "dynamic/world.x4");
+    test!(World, world_x0, "main/startup/world.x0");
+    test!(World, world_x1, "main/startup/world.x1");
+    test!(World, world_x2, "main/startup/world.x2");
+    test!(World, world_x3, "main/startup/world.x3");
+    test!(World, world_x4, "main/startup/world.x4");
     test!(Objects, objects_x0, "main/startup/objects.x0");
     test!(Objects, objects_x1, "main/startup/objects.x1");
     test!(Objects, objects_x2, "main/startup/objects.x2");
