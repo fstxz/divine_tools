@@ -208,6 +208,10 @@ impl Binary for Object {
 
 impl Inspector for World {
     fn init(&mut self, ctx: &Context) -> crate::Result<()> {
+        if WORLD_EDITOR.get().is_some() {
+            return Ok(());
+        }
+
         let config = Config::get();
 
         if config.dd_path.as_os_str().is_empty() {
