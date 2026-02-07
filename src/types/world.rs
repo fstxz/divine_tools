@@ -576,7 +576,7 @@ impl Inspector for World {
                             if stopped {
                                 let global_pos = pos2(
                                     -response.rect.min.x + position.x,
-                                    -response.rect.min.y + position.y,
+                                    -response.rect.min.y + position.y + object.height as f32,
                                 );
 
                                 let new_cell = Vec2i::new(
