@@ -331,12 +331,16 @@ impl Inspector for World {
 
                         let (response, painter) = ui.allocate_painter(total_size, Sense::empty());
 
-                        let first_col = (viewport.min.x / cell_size.x).floor().max(0.0) as usize;
-                        let last_col =
-                            (viewport.max.x / cell_size.x).ceil().min(WIDTH as f32) as usize;
-                        let first_row = (viewport.min.y / cell_size.y).floor().max(0.0) as usize;
-                        let last_row =
-                            (viewport.max.y / cell_size.y).ceil().min(HEIGHT as f32) as usize;
+                        let first_col =
+                            ((viewport.min.x / cell_size.x) - 4.0).floor().max(0.0) as usize;
+                        let last_col = ((viewport.max.x / cell_size.x) + 4.0)
+                            .ceil()
+                            .min(WIDTH as f32) as usize;
+                        let first_row =
+                            ((viewport.min.y / cell_size.y) - 4.0).floor().max(0.0) as usize;
+                        let last_row = ((viewport.max.y / cell_size.y) + 4.0)
+                            .ceil()
+                            .min(HEIGHT as f32) as usize;
 
                         // Terrain drawing.
                         for row in first_row..last_row {
