@@ -282,8 +282,8 @@ impl Inspector for World {
             object_textures: HashMap::new(),
             selected_cell: None,
             objects_file,
-            selected_tile: Vec2i::default(),
-            selected_overlay_tile: Vec2i::default(),
+            selected_tile: 0,
+            selected_overlay_tile: 1,
             dragged_object: None,
             command_history: CommandHistory::default(),
         }));
@@ -356,6 +356,7 @@ impl Inspector for World {
                                 let cell_response = ui.allocate_rect(rect, Sense::click());
                                 let ctrl_pressed = ui.ctx().input(|i| i.modifiers.ctrl);
                                 let x_pressed = ui.input(|i| i.key_down(Key::X));
+                                let c_pressed = ui.input(|i| i.key_down(Key::C));
 
                                 let cell_idx = row * WIDTH + col;
 
@@ -366,9 +367,7 @@ impl Inspector for World {
                                             Command::SetImageIndex {
                                                 pos: Vec2i::new(col as u32, row as u32),
                                                 old_image: self.cells[cell_idx].image_index,
-                                                new_image: (selected_tile.y * TILES_WIDTH as u32
-                                                    + selected_tile.x)
-                                                    as i16,
+                                                new_image: *selected_tile,
                                             },
                                         );
                                     }
@@ -379,10 +378,7 @@ impl Inspector for World {
                                             Command::SetOverlayImageIndex {
                                                 pos: Vec2i::new(col as u32, row as u32),
                                                 old_image: self.cells[cell_idx].overlay_image_index,
-                                                new_image: (selected_overlay_tile.y
-                                                    * TILES_WIDTH as u32
-                                                    + selected_overlay_tile.x)
-                                                    as i16,
+                                                new_image: *selected_overlay_tile,
                                             },
                                         );
                                     } else if x_pressed {
@@ -398,6 +394,17 @@ impl Inspector for World {
                                 }
 
                                 let cell = &self.cells[cell_idx];
+
+                                if c_pressed {
+                                    if cell_response.clicked() {
+                                        *selected_tile = cell.image_index;
+                                    } else if cell_response.secondary_clicked()
+                                        && cell.overlay_image_index != -1
+                                    {
+                                        *selected_overlay_tile = cell.overlay_image_index;
+                                    }
+                                }
+
                                 if cell.image_index >= 0 {
                                     painter.image(
                                         terrain_textures[cell.image_index as usize].id(),
@@ -730,13 +737,13 @@ impl Inspector for World {
                                 );
 
                                 if tile_response.clicked() {
-                                    *selected_tile = Vec2i::new(col as u32, row as u32);
+                                    *selected_tile = (row * TILES_WIDTH + col) as i16;
                                 } else if tile_response.secondary_clicked() {
-                                    *selected_overlay_tile = Vec2i::new(col as u32, row as u32);
+                                    *selected_overlay_tile = (row * TILES_WIDTH + col) as i16;
                                 }
 
-                                if col == selected_tile.x as usize
-                                    && row == selected_tile.y as usize
+                                if col as i16 == *selected_tile % TILES_WIDTH as i16
+                                    && row as i16 == *selected_tile / TILES_WIDTH as i16
                                 {
                                     painter.rect_stroke(
                                         rect,
@@ -744,8 +751,8 @@ impl Inspector for World {
                                         Stroke::new(2.0, Color32::LIGHT_GREEN),
                                         StrokeKind::Inside,
                                     );
-                                } else if col == selected_overlay_tile.x as usize
-                                    && row == selected_overlay_tile.y as usize
+                                } else if col as i16 == *selected_overlay_tile % TILES_WIDTH as i16
+                                    && row as i16 == *selected_overlay_tile / TILES_WIDTH as i16
                                 {
                                     painter.rect_stroke(
                                         rect,
@@ -776,8 +783,8 @@ struct WorldEditor {
     object_textures: HashMap<u16, TextureHandle>,
     selected_cell: Option<SelectedCell>,
     objects_file: File,
-    selected_tile: Vec2i,
-    selected_overlay_tile: Vec2i,
+    selected_tile: i16,
+    selected_overlay_tile: i16,
     dragged_object: Option<DraggedObject>,
     command_history: CommandHistory,
 }

@@ -205,8 +205,9 @@ impl Editor {
                     ui.label("Holding ALT will highlight all objects. To select an object, click on it while holding ALT. \
                         When object is selected, you can drag it to move it to a different place.");
 
-                    ui.separator();
+                    ui.heading("Other");
 
+                    ui.label("To set the tile under the cursor as the selected tile, hold C and press left or right mouse button.");
                     ui.label("To undo changes, press CTRL+Z. To redo, press CTRL+SHIFT+Z.");
 
                     ctx.input(|i| {
