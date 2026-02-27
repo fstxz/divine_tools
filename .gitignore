@@ -1,3 +1,8 @@
 /target
 /tmp
 /build
+
+# vim
+*.swp
+*.swo
+*~
