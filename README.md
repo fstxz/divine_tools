@@ -2,11 +2,17 @@
 
 Modding tools for Divine Divinity.
 
+Note: it may also work with files from Beyond Divinity, but I have not tested it.
+
 ## Usage
 
 ### Editor
 
-Launching the program without any arguments will open the editor that allows to open and edit various binary files. To launch the world editor, open a world file (`world.xN`) located in `main/startup` or in a save game folder.
+Launching the program without any arguments will open the editor that allows to open and edit various binary files.
+
+#### World editor
+
+To launch the world editor, open a world file (`world.xN`) located in `main/startup` or in a save game folder. `Help -> World editor` menu provides info on how to use the world editor.
 
 ### Packed `.cmp` files
 
