@@ -6,8 +6,8 @@ use std::{
 
 use directories::ProjectDirs;
 use eframe::egui::{
-    self, Align2, Checkbox, DragValue, Grid, Hyperlink, Layout, MenuBar, ScrollArea,
-    ThemePreference, ViewportBuilder, ViewportId, vec2,
+    self, Checkbox, DragValue, Grid, Hyperlink, Layout, MenuBar, ScrollArea, ThemePreference,
+    ViewportBuilder, ViewportId, vec2,
 };
 
 use crate::{buffer::BufferWriter, types::Format};
@@ -51,7 +51,8 @@ pub fn run_editor() -> crate::Result<()> {
 #[derive(Default)]
 pub struct Editor {
     loaded_file: Option<Format>,
-    message: Option<Message>,
+    messages: Vec<Message>,
+    next_message_id: usize,
     show_preferences: bool,
     show_world_editor_help: bool,
     show_about: bool,
@@ -59,10 +60,13 @@ pub struct Editor {
 
 impl Editor {
     fn show_message(&mut self, text: &str, severity: MessageSeverity) {
-        self.message = Some(Message {
+        self.messages.push(Message {
             text: text.to_owned(),
             severity,
+            id: self.next_message_id,
         });
+
+        self.next_message_id += 1;
     }
 
     fn show_preferences(&mut self, ctx: &egui::Context) {
@@ -237,21 +241,60 @@ impl Editor {
                             "https://github.com/fstxz/divine_tools",
                         ));
                     });
+                });
 
-                    ctx.input(|i| {
-                        if i.viewport().close_requested() {
-                            self.show_about = false;
-                        }
-                    });
+                ctx.input(|i| {
+                    if i.viewport().close_requested() {
+                        self.show_about = false;
+                    }
                 });
             },
         );
+    }
+
+    fn show_messages(&mut self, ctx: &egui::Context) {
+        let mut windows_to_remove = Vec::new();
+
+        for (i, message) in self.messages.iter_mut().enumerate() {
+            let severity = match message.severity {
+                // MessageSeverity::Info => "Info",
+                // MessageSeverity::Warning => "Warning",
+                MessageSeverity::Error => "Error",
+            };
+
+            let viewport_id = ViewportId::from_hash_of(&message.id);
+            ctx.show_viewport_immediate(
+                viewport_id,
+                ViewportBuilder::default()
+                    .with_title(severity)
+                    .with_always_on_top()
+                    .with_inner_size(vec2(200.0, 100.0)),
+                |ctx, _| {
+                    egui::CentralPanel::default().show(ctx, |ui| {
+                        ui.centered_and_justified(|ui| {
+                            ui.label(&message.text);
+                        });
+                    });
+
+                    ctx.input(|input| {
+                        if input.viewport().close_requested() {
+                            windows_to_remove.push(i);
+                        }
+                    });
+                },
+            );
+        }
+
+        for i in windows_to_remove.into_iter().rev() {
+            self.messages.remove(i);
+        }
     }
 }
 
 struct Message {
     text: String,
     severity: MessageSeverity,
+    id: usize,
 }
 
 enum MessageSeverity {
@@ -262,31 +305,7 @@ enum MessageSeverity {
 
 impl eframe::App for Editor {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let mut message_closed = false;
-        if let Some(message) = &self.message {
-            let severity = match message.severity {
-                // MessageSeverity::Info => "Info",
-                // MessageSeverity::Warning => "Warning",
-                MessageSeverity::Error => "Error",
-            };
-
-            egui::Window::new(severity)
-                .collapsible(false)
-                .resizable(false)
-                .anchor(Align2::CENTER_CENTER, [0.0, 0.0])
-                .show(ctx, |ui| {
-                    ui.vertical_centered(|ui| {
-                        ui.label(&message.text);
-                        if ui.button("Close").clicked() {
-                            message_closed = true;
-                        }
-                    });
-                });
-        }
-
-        if message_closed {
-            self.message = None;
-        }
+        self.show_messages(ctx);
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             MenuBar::new().ui(ui, |ui| {
