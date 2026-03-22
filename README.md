@@ -4,6 +4,8 @@ Modding tools for Divine Divinity.
 
 Note: it may also work with files from Beyond Divinity, but I have not tested it.
 
+![](misc/screenshot01.png)
+
 ## Usage
 
 ### Editor
