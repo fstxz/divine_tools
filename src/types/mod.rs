@@ -10,11 +10,12 @@ use crate::{
     buffer::{BufferReader, BufferWriter},
     editor::Inspector,
     types::{
-        eggs::Eggs, font::Font, info::Info, magic::Magic, music::Music, objects::Objects,
-        objects_000::Objects000, osiris_names::OsirisNames, osiris_objects::OsirisObjects,
-        persist::Persist, props::Props, quest_log::QuestLog, quickinfo::QuickInfo,
-        reverbs::Reverbs, shroud::Shroud, sound::SoundConfig, status_plate::StatusPlate,
-        telpstates::TelpStates, text::Text, usernotes::Notes, world::World,
+        eggs::Eggs, font::Font, info::Info, itemgen::ItemGen, magic::Magic, music::Music,
+        objects::Objects, objects_000::Objects000, osiris_names::OsirisNames,
+        osiris_objects::OsirisObjects, persist::Persist, props::Props, quest_log::QuestLog,
+        quickinfo::QuickInfo, reverbs::Reverbs, shroud::Shroud, sound::SoundConfig,
+        status_plate::StatusPlate, telpstates::TelpStates, text::Text, usernotes::Notes,
+        world::World,
     },
 };
 
@@ -23,6 +24,7 @@ pub mod eggs;
 pub mod font;
 pub mod image_list;
 pub mod info;
+pub mod itemgen;
 pub mod magic;
 pub mod music;
 pub mod objects;
@@ -119,6 +121,7 @@ impl<'de> serde::Deserialize<'de> for Format {
                     FormatType::Shroud => Box::new(map.next_value::<Shroud>()?),
                     FormatType::World => Box::new(map.next_value::<World>()?),
                     FormatType::Objects => Box::new(map.next_value::<Objects>()?),
+                    FormatType::ItemGen => Box::new(map.next_value::<ItemGen>()?),
                 };
 
                 Ok(Format {
@@ -160,6 +163,7 @@ impl Format {
             "quickinfo.000" => (FormatType::QuickInfo, from_bytes_dyn::<QuickInfo>),
             "text.cmp" => (FormatType::Text, from_bytes_dyn::<Text>),
             "info.000" => (FormatType::Info, from_bytes_dyn::<Info>),
+            "itemgen.cmp" => (FormatType::ItemGen, from_bytes_dyn::<ItemGen>),
             _ => {
                 let Some(extension) = path.extension() else {
                     return Err("Unknown file format".into());
@@ -223,6 +227,7 @@ enum FormatType {
     Shroud,
     World,
     Objects,
+    ItemGen,
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
@@ -430,17 +435,26 @@ impl Binary for CStringWithLength {
         Self: Sized,
     {
         let length = u32::from_bytes(reader)? as usize;
+
         let bytes = reader.read_bytes(length)?.to_vec();
 
         Ok(Self {
-            inner: CString::from_vec_with_nul(bytes)?,
+            inner: if length > 0 {
+                CString::from_vec_with_nul(bytes)?
+            } else {
+                CString::default()
+            },
         })
     }
 
     fn to_bytes(&self, writer: &mut BufferWriter) {
-        let bytes = self.inner.as_bytes_with_nul();
-        writer.write_u32(bytes.len() as u32);
-        writer.write_bytes(bytes);
+        if self.inner.count_bytes() > 0 {
+            let bytes = self.inner.as_bytes_with_nul();
+            writer.write_u32(bytes.len() as u32);
+            writer.write_bytes(bytes);
+        } else {
+            writer.write_u32(0);
+        }
     }
 }
 
@@ -493,11 +507,11 @@ mod load_save {
     use crate::{
         buffer::{BufferReader, BufferWriter},
         types::{
-            Binary, eggs::Eggs, image_list::ImageListIndex, info::Info, magic::Magic, music::Music,
-            objects::Objects, osiris_objects::OsirisObjects, persist::Persist, props::Props,
-            quest_log::QuestLog, quickinfo::QuickInfo, reverbs::Reverbs, shroud::Shroud,
-            sound::SoundConfig, status_plate::StatusPlate, telpstates::TelpStates, text::Text,
-            usernotes::Notes, world::World,
+            Binary, eggs::Eggs, image_list::ImageListIndex, info::Info, itemgen::ItemGen,
+            magic::Magic, music::Music, objects::Objects, osiris_objects::OsirisObjects,
+            persist::Persist, props::Props, quest_log::QuestLog, quickinfo::QuickInfo,
+            reverbs::Reverbs, shroud::Shroud, sound::SoundConfig, status_plate::StatusPlate,
+            telpstates::TelpStates, text::Text, usernotes::Notes, world::World,
         },
     };
 
@@ -595,4 +609,6 @@ mod load_save {
     );
     // TODO: implement
     // test!(Font, "fonts/dialog_white.fnt");
+
+    test!(ItemGen, itemgen, "dat/English/itemgen.cmp");
 }
