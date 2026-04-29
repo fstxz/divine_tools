@@ -2,20 +2,18 @@
 
 use crate::{
     editor::{Inspector, property, struct_ui},
-    types::Binary,
+    types::{Binary, CStringWithLength},
 };
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Props {
-    props: Vec<Unknown0>,
+    props: Vec<Property>,
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
-struct Unknown0 {
-    // TODO: null-terminated, even though it has a length
-    // check if the game cares
-    unknown0: String,
-    unknown1: Vec<u32>,
+struct Property {
+    name: CStringWithLength,
+    values: Vec<u32>,
 }
 
 impl Binary for Props {
@@ -24,7 +22,7 @@ impl Binary for Props {
         Self: Sized,
     {
         Ok(Self {
-            props: <Vec<Unknown0>>::from_bytes(reader)?,
+            props: Binary::from_bytes(reader)?,
         })
     }
 
@@ -33,20 +31,20 @@ impl Binary for Props {
     }
 }
 
-impl Binary for Unknown0 {
+impl Binary for Property {
     fn from_bytes(reader: &mut crate::buffer::BufferReader) -> crate::Result<Self>
     where
         Self: Sized,
     {
         Ok(Self {
-            unknown0: String::from_bytes(reader)?,
-            unknown1: <Vec<u32>>::from_bytes(reader)?,
+            name: Binary::from_bytes(reader)?,
+            values: Binary::from_bytes(reader)?,
         })
     }
 
     fn to_bytes(&self, writer: &mut crate::buffer::BufferWriter) {
-        self.unknown0.to_bytes(writer);
-        self.unknown1.to_bytes(writer);
+        self.name.to_bytes(writer);
+        self.values.to_bytes(writer);
     }
 }
 
@@ -58,11 +56,11 @@ impl Inspector for Props {
     }
 }
 
-impl Inspector for Unknown0 {
+impl Inspector for Property {
     fn show(&mut self, ui: &mut eframe::egui::Ui) {
         struct_ui(ui, |ui| {
-            property("unknown0", &mut self.unknown0, ui);
-            property("unknown1", &mut self.unknown1, ui);
+            property("name", &mut self.name, ui);
+            property("values", &mut self.values, ui);
         });
     }
 }
