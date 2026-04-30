@@ -16,6 +16,7 @@ const WINDOW_TITLE: &str = "Divine Tools";
 const CONFIG_NAME: &str = "config.json";
 
 static CONFIG: OnceLock<Arc<Mutex<Config>>> = OnceLock::new();
+static MESSAGES: OnceLock<Arc<Mutex<Messages>>> = OnceLock::new();
 
 pub fn run_editor() -> crate::Result<()> {
     Config::load().map_err(|e| format!("Failed to load config: {e}"))?;
@@ -45,30 +46,20 @@ pub fn run_editor() -> crate::Result<()> {
         }),
     )?;
 
+    Config::get().save()?;
+
     Ok(())
 }
 
 #[derive(Default)]
 pub struct Editor {
     loaded_file: Option<Format>,
-    messages: Vec<Message>,
-    next_message_id: usize,
     show_preferences: bool,
     show_world_editor_help: bool,
     show_about: bool,
 }
 
 impl Editor {
-    fn show_message(&mut self, text: &str, severity: MessageSeverity) {
-        self.messages.push(Message {
-            text: text.to_owned(),
-            severity,
-            id: self.next_message_id,
-        });
-
-        self.next_message_id += 1;
-    }
-
     fn show_preferences(&mut self, ctx: &egui::Context) {
         let viewport_id = ViewportId::from_hash_of("preferences");
         ctx.show_viewport_immediate(
@@ -76,6 +67,32 @@ impl Editor {
             ViewportBuilder::default().with_title("Preferences"),
             |ctx, _| {
                 let mut config = Config::get();
+
+                eframe::egui::TopBottomPanel::bottom("preferences_bottom_panel").show(ctx, |ui| {
+                    ui.vertical_centered(|ui| {
+                        if ui.button("Apply").clicked() {
+                            match config.save() {
+                                Ok(_) => match config.theme {
+                                    ColorTheme::System => ctx.options_mut(|o| {
+                                        o.theme_preference = ThemePreference::System
+                                    }),
+                                    ColorTheme::Light => ctx.options_mut(|o| {
+                                        o.theme_preference = ThemePreference::Light
+                                    }),
+                                    ColorTheme::Dark => ctx.options_mut(|o| {
+                                        o.theme_preference = ThemePreference::Dark
+                                    }),
+                                },
+                                Err(e) => {
+                                    show_message(
+                                        &format!("Failed to save preferences: {e}"),
+                                        MessageSeverity::Error,
+                                    );
+                                }
+                            }
+                        }
+                    });
+                });
 
                 egui::CentralPanel::default().show(ctx, |ui| {
                     ui.allocate_ui(ui.available_size() - vec2(0.0, 30.0), |ui| {
@@ -143,30 +160,6 @@ impl Editor {
                                         });
                                     });
                             });
-                    });
-
-                    ui.vertical_centered(|ui| {
-                        if ui.button("Apply").clicked() {
-                            match config.save() {
-                                Ok(_) => match config.theme {
-                                    ColorTheme::System => ctx.options_mut(|o| {
-                                        o.theme_preference = ThemePreference::System
-                                    }),
-                                    ColorTheme::Light => ctx.options_mut(|o| {
-                                        o.theme_preference = ThemePreference::Light
-                                    }),
-                                    ColorTheme::Dark => ctx.options_mut(|o| {
-                                        o.theme_preference = ThemePreference::Dark
-                                    }),
-                                },
-                                Err(e) => {
-                                    self.show_message(
-                                        &format!("Failed to save preferences: {e}"),
-                                        MessageSeverity::Error,
-                                    );
-                                }
-                            }
-                        }
                     });
                 });
 
@@ -253,16 +246,18 @@ impl Editor {
     }
 
     fn show_messages(&mut self, ctx: &egui::Context) {
+        let mut messages = Messages::get();
+
         let mut windows_to_remove = Vec::new();
 
-        for (i, message) in self.messages.iter_mut().enumerate() {
+        for (i, message) in messages.messages.iter_mut().enumerate() {
             let severity = match message.severity {
-                // MessageSeverity::Info => "Info",
+                MessageSeverity::Info => "Info",
                 // MessageSeverity::Warning => "Warning",
                 MessageSeverity::Error => "Error",
             };
 
-            let viewport_id = ViewportId::from_hash_of(&message.id);
+            let viewport_id = ViewportId::from_hash_of(message.id);
             ctx.show_viewport_immediate(
                 viewport_id,
                 ViewportBuilder::default()
@@ -286,21 +281,9 @@ impl Editor {
         }
 
         for i in windows_to_remove.into_iter().rev() {
-            self.messages.remove(i);
+            messages.messages.remove(i);
         }
     }
-}
-
-struct Message {
-    text: String,
-    severity: MessageSeverity,
-    id: usize,
-}
-
-enum MessageSeverity {
-    // Info,
-    // Warning,
-    Error,
 }
 
 impl eframe::App for Editor {
@@ -329,7 +312,7 @@ impl eframe::App for Editor {
                                 self.loaded_file = Some(v)
                             }
                             Err(e) => {
-                                self.show_message(&format!("{e}"), MessageSeverity::Error);
+                                show_message(&format!("{e}"), MessageSeverity::Error);
                             }
                         }
                     }
@@ -366,7 +349,7 @@ impl eframe::App for Editor {
 
                                 let Ok(serialized) = serde_json::to_string_pretty(&loaded_file)
                                 else {
-                                    self.show_message(
+                                    show_message(
                                         "Failed to serialize the file",
                                         MessageSeverity::Error,
                                     );
@@ -374,7 +357,7 @@ impl eframe::App for Editor {
                                 };
 
                                 if let Err(e) = std::fs::write(path, serialized) {
-                                    self.show_message(
+                                    show_message(
                                         &format!("Failed to write to file: {e}"),
                                         MessageSeverity::Error,
                                     );
@@ -429,7 +412,7 @@ impl eframe::App for Editor {
                         let file = match std::fs::read_to_string(&path) {
                             Ok(f) => f,
                             Err(e) => {
-                                self.show_message(
+                                show_message(
                                     &format!("Failed to open file at {}: {e}", path.display()),
                                     MessageSeverity::Error,
                                 );
@@ -438,7 +421,7 @@ impl eframe::App for Editor {
                         };
 
                         let Ok(deserialized) = serde_json::from_str::<Format>(&file) else {
-                            self.show_message("Failed to load file", MessageSeverity::Error);
+                            show_message("Failed to load file", MessageSeverity::Error);
                             return;
                         };
 
@@ -562,6 +545,12 @@ impl Inspector for String {
 }
 
 impl Inspector for u32 {
+    fn show(&mut self, ui: &mut egui::Ui) {
+        ui.add(DragValue::new(self));
+    }
+}
+
+impl Inspector for u64 {
     fn show(&mut self, ui: &mut egui::Ui) {
         ui.add(DragValue::new(self));
     }
@@ -692,6 +681,8 @@ pub(crate) struct Config {
     pub dd_path: PathBuf,
     #[serde(default)]
     pub theme: ColorTheme,
+    #[serde(default)]
+    pub font_import_glyphs_overwrite: bool,
 }
 
 impl Config {
@@ -747,4 +738,43 @@ pub(crate) enum ColorTheme {
     System,
     Light,
     Dark,
+}
+
+#[derive(Default)]
+struct Messages {
+    messages: Vec<Message>,
+    next_message_id: usize,
+}
+
+impl Messages {
+    fn get<'a>() -> MutexGuard<'a, Self> {
+        let messages = MESSAGES.get_or_init(|| Arc::new(Mutex::new(Messages::default())));
+        messages.lock().unwrap()
+    }
+}
+
+struct Message {
+    text: String,
+    severity: MessageSeverity,
+    id: usize,
+}
+
+pub enum MessageSeverity {
+    Info,
+    // Warning,
+    Error,
+}
+
+pub fn show_message(text: &str, severity: MessageSeverity) {
+    let mut messages = Messages::get();
+
+    let id = messages.next_message_id;
+
+    messages.messages.push(Message {
+        text: text.to_owned(),
+        severity,
+        id,
+    });
+
+    messages.next_message_id += 1;
 }

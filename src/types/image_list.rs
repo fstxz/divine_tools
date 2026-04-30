@@ -2,7 +2,11 @@
 
 use std::path::Path;
 
-use crate::{buffer::BufferReader, editor::Inspector, types::Binary};
+use crate::{
+    buffer::{BufferReader, BufferWriter},
+    editor::Inspector,
+    types::Binary,
+};
 
 const INDEX_ENTRY_SIZE: usize = 56;
 
@@ -71,6 +75,7 @@ pub enum ImageType {
     Transparent = 1,
 }
 
+#[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct Image {
     width: u32,
     height: u32,
@@ -78,6 +83,14 @@ pub struct Image {
 }
 
 impl Image {
+    pub fn new(width: u32, height: u32, image_data: Vec<[u8; 4]>) -> Self {
+        Self {
+            width,
+            height,
+            image_data,
+        }
+    }
+
     pub fn width(&self) -> u32 {
         self.width
     }
@@ -88,6 +101,77 @@ impl Image {
 
     pub fn image_data(&self) -> &[[u8; 4]] {
         &self.image_data
+    }
+
+    pub fn encode_as_transparent(&self) -> Vec<u8> {
+        let mut image_writer = BufferWriter::new();
+
+        let mut chunk_writer = BufferWriter::new();
+        let mut pixel_writer = BufferWriter::new();
+
+        for row in self.image_data.chunks_exact(self.width as usize) {
+            let mut chunks: Vec<(u16, u16)> = Vec::new(); // (pixel_offset, pixel_count)
+            let mut pixel_offset = 0;
+            let mut pixel_count = 0;
+
+            let mut last_pixel_alpha = row[0][3];
+
+            let row_offset = pixel_writer.len() as u32;
+
+            for (i, color) in row.iter().enumerate() {
+                let alpha = color[3];
+
+                if alpha != last_pixel_alpha {
+                    if alpha == 0 {
+                        chunks.push((pixel_offset, pixel_count));
+                        pixel_count = 0;
+                    } else {
+                        pixel_offset = i as u16;
+                    }
+                }
+
+                if alpha > 0 {
+                    pixel_writer.write_u16(r8g8b8a8_to_r5g6b5(color));
+                    pixel_count += 1;
+                }
+
+                last_pixel_alpha = alpha;
+            }
+
+            // Add remaining chunk.
+            if last_pixel_alpha == 255 {
+                chunks.push((pixel_offset, pixel_count));
+            }
+
+            let chunk_count = chunks.len() as u16;
+
+            chunk_writer.write_u16(chunk_count);
+
+            if chunks.is_empty() {
+                chunk_writer.pad(6);
+            } else {
+                chunk_writer.write_u32(row_offset);
+
+                for (pixel_offset, pixel_count) in chunks {
+                    chunk_writer.write_u16(pixel_offset);
+                    chunk_writer.write_u16(pixel_count);
+                }
+
+                chunk_writer.write_u16(chunk_count);
+            }
+        }
+
+        // +12 to include the lengths themselves as well as width and height.
+        image_writer.write_u32((chunk_writer.len() + pixel_writer.len()) as u32 + 12);
+        image_writer.write_u32(chunk_writer.len() as u32 + 12);
+
+        image_writer.write_u16(self.width as u16);
+        image_writer.write_u16(self.height as u16);
+
+        image_writer.write_bytes(&chunk_writer.finish());
+        image_writer.write_bytes(&pixel_writer.finish());
+
+        image_writer.finish()
     }
 }
 
@@ -246,37 +330,53 @@ pub fn decode_opaque_image(bytes: &[u8], width: u32, height: u32) -> crate::Resu
     })
 }
 
+/// Decodes transparent image from `bytes`.
 pub fn decode_transparent_image(bytes: &[u8]) -> crate::Result<Image> {
     let mut reader = BufferReader::new(bytes);
     let _size = reader.read_u32()?;
+
+    // Offset to image data.
     let data_offset = reader.read_u32()? as usize;
 
+    // Width and height of the final image.
     let width = reader.read_u16()? as u32;
     let height = reader.read_u16()? as u32;
 
+    // Initialize image data buffer (fully transparent by default).
     let mut image = Image {
         width,
         height,
         image_data: vec![[0u8, 0u8, 0u8, 0u8]; (width * height) as usize],
     };
 
+    // Read chunks row by row.
     for y in 0..height {
+        // Read number of chunks for this row.
         let chunk_count = reader.read_u16()? as usize;
 
+        // If this row doesn't have any chunks, we skip 6 bytes and go to the next row.
         if chunk_count == 0 {
             reader.skip(6);
             continue;
         }
 
+        // Offset to the start of image data for this row.
         let row_offset = reader.read_u32()? as usize;
 
+        // Current offset to the image data.
         let mut index = data_offset + row_offset;
 
         for _ in 0..chunk_count {
+            // Offset in pixels from the start of the row for this chunk.
             let pixel_offset = reader.read_u16()? as u32;
+
+            // How many pixels are in this chunk.
             let pixel_count = reader.read_u16()? as u32;
 
+            // Now we read 16 bit color data from current_offset and write
+            // it to the sprite's image_data starting at pixel_offset.
             for x in 0..pixel_count {
+                // Read color data and convert it from R5G6B5 to R8G8B8.
                 let color = &reader.buffer()[index..index + 2];
                 let color = r5g6b5_to_r8g8b8(u16::from_le_bytes(color.try_into()?));
 
@@ -304,6 +404,14 @@ fn r5g6b5_to_r8g8b8(value: u16) -> [u8; 3] {
     let b = (b * 527 + 23) >> 6;
 
     [r as u8, g as u8, b as u8]
+}
+
+fn r8g8b8a8_to_r5g6b5(value: &[u8; 4]) -> u16 {
+    let r = ((value[0] >> 3) & 0x1F) as u16;
+    let g = ((value[1] >> 2) & 0x3F) as u16;
+    let b = ((value[2] >> 3) & 0x1F) as u16;
+
+    (r << 11) | (g << 5) | b
 }
 
 fn decompress(input_buffer: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {

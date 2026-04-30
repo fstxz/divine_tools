@@ -358,6 +358,19 @@ impl Binary for u32 {
     }
 }
 
+impl Binary for u64 {
+    fn from_bytes(reader: &mut BufferReader) -> crate::Result<Self>
+    where
+        Self: Sized,
+    {
+        reader.read_u64()
+    }
+
+    fn to_bytes(&self, writer: &mut BufferWriter) {
+        writer.write_u64(*self);
+    }
+}
+
 impl Binary for String {
     fn from_bytes(reader: &mut BufferReader) -> crate::Result<Self>
     where
@@ -507,11 +520,12 @@ mod load_save {
     use crate::{
         buffer::{BufferReader, BufferWriter},
         types::{
-            Binary, eggs::Eggs, image_list::ImageListIndex, info::Info, itemgen::ItemGen,
-            magic::Magic, music::Music, objects::Objects, osiris_objects::OsirisObjects,
-            persist::Persist, props::Props, quest_log::QuestLog, quickinfo::QuickInfo,
-            reverbs::Reverbs, shroud::Shroud, sound::SoundConfig, status_plate::StatusPlate,
-            telpstates::TelpStates, text::Text, usernotes::Notes, world::World,
+            Binary, eggs::Eggs, font::Font, image_list::ImageListIndex, info::Info,
+            itemgen::ItemGen, magic::Magic, music::Music, objects::Objects,
+            osiris_objects::OsirisObjects, persist::Persist, props::Props, quest_log::QuestLog,
+            quickinfo::QuickInfo, reverbs::Reverbs, shroud::Shroud, sound::SoundConfig,
+            status_plate::StatusPlate, telpstates::TelpStates, text::Text, usernotes::Notes,
+            world::World,
         },
     };
 
@@ -607,8 +621,14 @@ mod load_save {
         cpackedi_12c,
         "static/imagelists/CPackedi.12c"
     );
-    // TODO: implement
-    // test!(Font, "fonts/dialog_white.fnt");
+
+    // Some fonts contain garbage data that gets cleaned after saving,
+    // so we test only some of them.
+    test!(Font, font_fontbig36, "fonts/fontbig36.fnt");
+    test!(Font, font_fontbig24, "fonts/fontbig24.fnt");
+    test!(Font, font_fontb5, "fonts/fontb5.fnt");
+    test!(Font, font_fontgo5, "fonts/fontgo5.fnt");
+    test!(Font, font_fontred3, "fonts/diary_head_640.fnt");
 
     test!(ItemGen, itemgen, "dat/English/itemgen.cmp");
 }

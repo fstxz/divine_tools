@@ -60,6 +60,11 @@ impl<'a> BufferReader<'a> {
         Ok(u32::from_le_bytes(bytes.try_into()?))
     }
 
+    pub fn peek_u32(&self) -> crate::Result<u32> {
+        let bytes = self.peek_bytes(4)?;
+        Ok(u32::from_le_bytes(bytes.try_into()?))
+    }
+
     pub fn read_u64(&mut self) -> crate::Result<u64> {
         let bytes = self.read_bytes(8)?;
         Ok(u64::from_le_bytes(bytes.try_into()?))
@@ -91,6 +96,18 @@ impl<'a> BufferReader<'a> {
 
         let slice = &self.buffer[self.position..self.position + count];
         self.position += count;
+        Ok(slice)
+    }
+
+    pub fn peek_bytes(&self, count: usize) -> crate::Result<&[u8]> {
+        if self.position + count > self.buffer.len() {
+            return Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::UnexpectedEof,
+                format!("Not enough bytes in buffer (position {})", self.position),
+            )));
+        }
+
+        let slice = &self.buffer[self.position..self.position + count];
         Ok(slice)
     }
 }

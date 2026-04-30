@@ -16,6 +16,10 @@ Launching the program without any arguments will open the editor that allows to 
 
 To launch the world editor, open a world file (`world.xN`) located in `main/startup` or in a save game folder. `Help -> World editor` menu provides info on how to use the world editor.
 
+#### Font editor
+
+To launch the font editor, open a font file (`.fnt`) located in `fonts` folder. Font editor allows to change font and its glyphs' properties. It also allows to export glyphs as PNG images and import them back.
+
 ### Packed `.cmp` files
 
 Note: This only works with files that have other files embedded inside them. Full list of those files: `flat.cmp`, `global.cmp`, `sound.cmp`, `voice.cmp`.
